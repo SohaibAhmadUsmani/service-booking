@@ -1,8 +1,9 @@
-import { Router } from "express";
+﻿import { Router } from "express";
+import { getAvailability, getSlots, setAvailability } from "./controller";
 
 /** Owner: Shanza */
 export const availabilityRouter = Router();
 
-availabilityRouter.get("/", (_req, res) => {
-  res.json({ module: "availability", status: "not_implemented" });
-});
+availabilityRouter.get("/:providerId", getAvailability);
+availabilityRouter.put("/:providerId", setAvailability);
+availabilityRouter.get("/:providerId/slots", getSlots);
