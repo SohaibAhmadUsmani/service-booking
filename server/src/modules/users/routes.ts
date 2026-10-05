@@ -1,8 +1,29 @@
 import { Router } from "express";
+import {
+  getProfileHandler,
+  updateProfileHandler,
+  changePasswordHandler,
+} from "./controller";
+import { requireAuth } from "../../middleware/auth";
+import { validateRequest } from "../../middleware/validate";
+import { updateProfileSchema, changePasswordSchema } from "./validation";
 
-/** Owner: Muzammil */
+/** Owner: Muzammil - Identity & Access */
 export const usersRouter = Router();
 
-usersRouter.get("/", (_req, res) => {
-  res.json({ module: "users", status: "not_implemented" });
-});
+// Current user profile endpoints
+usersRouter.get("/me", requireAuth, getProfileHandler);
+
+usersRouter.put(
+  "/me",
+  requireAuth,
+  validateRequest({ body: updateProfileSchema }),
+  updateProfileHandler
+);
+
+usersRouter.put(
+  "/me/password",
+  requireAuth,
+  validateRequest({ body: changePasswordSchema }),
+  changePasswordHandler
+);
