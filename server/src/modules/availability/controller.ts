@@ -1,4 +1,6 @@
-﻿import type { NextFunction, Request, Response } from "express";
+﻿import { isValidObjectId } from "mongoose";
+import type { NextFunction, Request, Response } from "express";
+import { bookingsRepository } from "../bookings/repository";
 import { HttpError, availabilityService } from "./service";
 
 function handle(err: unknown, res: Response, next: NextFunction) {
@@ -26,8 +28,11 @@ export async function setAvailability(req: Request, res: Response, next: NextFun
 
 export async function getSlots(req: Request, res: Response, next: NextFunction) {
   try {
+    const { providerId } = req.params;
+    if (!isValidObjectId(providerId)) throw new HttpError(400, "Invalid providerId");
     const date = String(req.query.date ?? "");
-    res.json({ date, slots: await availabilityService.getSlots(req.params.providerId, date) });
+    const booked = await bookingsRepository.activeStartTimes(providerId, date);
+    res.json({ date, slots: await availabilityService.getSlots(providerId, date, booked) });
   } catch (err) {
     handle(err, res, next);
   }
