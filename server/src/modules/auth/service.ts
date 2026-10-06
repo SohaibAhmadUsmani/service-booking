@@ -61,7 +61,7 @@ export class AuthService {
       role: req.role || UserRole.Customer,
       firstName: req.firstName,
       lastName: req.lastName,
-      phone: req.phone || null,
+      phone: req.phone || undefined,
       isActive: true,
       lastLogin: new Date(),
     });
@@ -243,7 +243,7 @@ export class AuthService {
       tokenHash,
       familyId,
       deviceInfo: deviceInfo || "Unknown Device",
-      ipAddress: ipAddress || null,
+      ipAddress: ipAddress || undefined,
       expiresAt,
     });
 
