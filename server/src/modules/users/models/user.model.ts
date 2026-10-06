@@ -10,6 +10,8 @@ export interface IUserDocument extends Document {
   phone?: string;
   avatarUrl?: string;
   isActive: boolean;
+  tokenVersion: number;
+  passwordChangedAt?: Date;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -21,11 +23,9 @@ const UserSchema = new Schema<IUserDocument>(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email address format"],
-      index: true,
     },
     passwordHash: {
       type: String,
@@ -37,7 +37,6 @@ const UserSchema = new Schema<IUserDocument>(
       enum: Object.values(UserRole),
       default: UserRole.Customer,
       required: true,
-      index: true,
     },
     firstName: {
       type: String,
@@ -54,17 +53,24 @@ const UserSchema = new Schema<IUserDocument>(
     phone: {
       type: String,
       trim: true,
-      default: null,
     },
     avatarUrl: {
       type: String,
       trim: true,
-      default: null,
     },
     isActive: {
       type: Boolean,
       default: true,
       index: true,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      required: true,
+    },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
     },
     lastLogin: {
       type: Date,
@@ -96,9 +102,32 @@ const UserSchema = new Schema<IUserDocument>(
   }
 );
 
-// Virtual for full name
+// Collation-aware case-insensitive unique index on email
+UserSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    collation: { locale: "en", strength: 2 },
+    name: "uniq_email_case_insensitive",
+  }
+);
+
+// Partial filter unique index on phone (ignores documents where phone is undefined)
+UserSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phone: { $type: "string" } },
+    name: "uniq_phone_sparse",
+  }
+);
+
+// Compound index for active role filtering and sorting
+UserSchema.index({ role: 1, isActive: 1, createdAt: -1 });
+
+// Virtual for full name with null safety
 UserSchema.virtual("fullName").get(function (this: IUserDocument) {
-  return `${this.firstName} ${this.lastName}`.trim();
+  return [this.firstName, this.lastName].filter(Boolean).join(" ").trim();
 });
 
 export const UserModel: Model<IUserDocument> =
