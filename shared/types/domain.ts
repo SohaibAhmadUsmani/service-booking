@@ -6,6 +6,13 @@ export enum UserRole {
   Admin = "admin",
 }
 
+/** Where a service is delivered. Stored in services.service_type. */
+export enum ServiceType {
+  HomeVisit = "home_visit",
+  InStore = "in_store",
+  Online = "online",
+}
+
 export enum BookingStatus {
   Pending = "pending",
   Confirmed = "confirmed",

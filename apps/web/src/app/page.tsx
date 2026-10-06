@@ -16,6 +16,12 @@ export default function HomePage() {
           <Link href="/search">Customer search (Khadija)</Link>
         </li>
         <li>
+          <Link href="/categories">Categories (Khadija)</Link>
+        </li>
+        <li>
+          <Link href="/providers">Providers (Khadija)</Link>
+        </li>
+        <li>
           <Link href="/bookings">Bookings (Shanza)</Link>
         </li>
         <li>
