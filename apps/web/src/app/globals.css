@@ -12,9 +12,17 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Set to auto to eliminate clash with Lenis JavaScript interpolation */
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fallback smooth scroll strictly when Lenis is inactive and motion is not reduced */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.lenis) {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
@@ -24,10 +32,12 @@ body {
 }
 
 /* Lenis smooth scroll recommended styles */
-html.lenis, html.lenis body {
+html.lenis,
+html.lenis body {
   height: auto;
 }
 
+html.lenis.lenis-smooth,
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
 }

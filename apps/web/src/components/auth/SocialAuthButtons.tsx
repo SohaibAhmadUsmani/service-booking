@@ -2,30 +2,86 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { cn } from "../../lib/utils";
 
-export function SocialAuthButtons() {
+interface SocialAuthButtonsProps {
+  mode?: "login" | "register" | "both";
+  dividerText?: string;
+  onGoogleClick?: () => void;
+  onGitHubClick?: () => void;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export function SocialAuthButtons({
+  mode = "both",
+  dividerText,
+  onGoogleClick,
+  onGitHubClick,
+  isLoading = false,
+  className,
+}: SocialAuthButtonsProps) {
+  // Accessible aria-label compliance ('Continue with Google to login/register')
+  const googleAriaLabel =
+    mode === "login"
+      ? "Continue with Google to login"
+      : mode === "register"
+      ? "Continue with Google to register"
+      : "Continue with Google to login/register";
+
+  const githubAriaLabel =
+    mode === "login"
+      ? "Continue with GitHub to login"
+      : mode === "register"
+      ? "Continue with GitHub to register"
+      : "Continue with GitHub to login/register";
+
+  const resolvedDividerText =
+    dividerText ??
+    (mode === "login"
+      ? "Or sign in with"
+      : mode === "register"
+      ? "Or sign up with"
+      : "Or continue with");
+
   return (
-    <div className="w-full">
-      <div className="relative my-6">
+    <div className={cn("w-full", className)}>
+      {/* Visual & Accessible Divider */}
+      <div
+        className="relative my-6"
+        role="separator"
+        aria-label="Alternative authentication methods"
+      >
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-slate-200" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-white px-3 text-slate-400 font-semibold tracking-wider">
-            Or sign up with
+            {resolvedDividerText}
           </span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Google Button */}
+        {/* Google Authentication Button */}
         <motion.button
           type="button"
+          id="btn-social-auth-google"
+          name="google-oauth"
+          aria-label={googleAriaLabel}
+          aria-busy={isLoading}
+          disabled={isLoading}
+          onClick={onGoogleClick}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.985 }}
-          className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 flex-shrink-0"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
             <path
               fill="#EA4335"
               d="M12 5c1.5 0 2.8.5 3.8 1.4l2.8-2.8C16.9 2 14.6 1.2 12 1.2 7.7 1.2 4 3.7 2.3 7.3l3.3 2.6C6.5 7.1 9 5 12 5z"
@@ -46,14 +102,25 @@ export function SocialAuthButtons() {
           <span>Google</span>
         </motion.button>
 
-        {/* GitHub Button */}
+        {/* GitHub Authentication Button */}
         <motion.button
           type="button"
+          id="btn-social-auth-github"
+          name="github-oauth"
+          aria-label={githubAriaLabel}
+          aria-busy={isLoading}
+          disabled={isLoading}
+          onClick={onGitHubClick}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.985 }}
-          className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
-          <svg className="w-4 h-4 fill-slate-800" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 fill-slate-800 flex-shrink-0"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
           </svg>
           <span>GitHub</span>
