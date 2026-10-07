@@ -13,8 +13,8 @@ import {
   formatPrice,
   initials,
 } from "../../../components/catalog/formatters";
-import styles from "@/components/catalog/catalog.module.css";
-import { fetchProvider } from "@/lib/api/catalog";
+import styles from "../../../components/catalog/catalog.module.css";
+import { fetchProvider } from "../../../../lib/api/catalog";
 
 export const dynamic = "force-dynamic";
 
