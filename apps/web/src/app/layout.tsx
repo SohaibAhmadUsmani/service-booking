@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SmoothScrollProvider } from "../components/providers/SmoothScrollProvider";
+import { AuthProvider } from "../lib/auth/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Service Booking",
-  description: "Book and manage services online",
+  title: "Service Booking Platform — Secure Identity & Access",
+  description: "Enterprise-grade identity management and service booking platform",
 };
 
 export default function RootLayout({
@@ -13,7 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="antialiased selection:bg-indigo-500 selection:text-white">
+        <SmoothScrollProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SmoothScrollProvider>
+      </body>
     </html>
   );
 }
