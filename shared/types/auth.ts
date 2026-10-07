@@ -1,6 +1,31 @@
 import { UserRole } from "./domain";
 
 /**
+ * Standard security regexes enforced across client and server.
+ */
+export const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,72}$/;
+
+export const PHONE_E164_REGEX = /^\+[1-9]\d{1,14}$/;
+
+/**
+ * Roles allowed to register publicly.
+ */
+export type RegistrableRole = UserRole.Customer | UserRole.Provider;
+
+/**
+ * Provider-specific metadata returned alongside user profile.
+ */
+export interface ProviderDetailsDto {
+  businessName?: string;
+  bio?: string;
+  serviceCategory?: string;
+  isVerified?: boolean;
+  rating?: number;
+  reviewCount?: number;
+}
+
+/**
  * Public/Safe user representation returned in API responses.
  * Sensitive data such as password hashes are strictly excluded.
  */
@@ -12,6 +37,7 @@ export interface UserProfile {
   lastName: string;
   phone?: string;
   avatarUrl?: string;
+  providerDetails?: ProviderDetailsDto | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +49,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: UserRole;
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
 }
@@ -35,7 +62,7 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
-  role?: UserRole.Customer | UserRole.Provider;
+  role?: RegistrableRole;
   phone?: string;
 }
 
@@ -45,6 +72,7 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 /**
@@ -53,7 +81,21 @@ export interface LoginRequest {
 export interface AuthResponse {
   user: UserProfile;
   token: string;
-  refreshToken?: string;
+  refreshToken: string;
+}
+
+/**
+ * Request payload for refreshing access tokens.
+ */
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+/**
+ * Request payload for revoking session on logout.
+ */
+export interface LogoutRequest {
+  refreshToken: string;
 }
 
 /**

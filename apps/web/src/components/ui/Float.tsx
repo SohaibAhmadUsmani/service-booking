@@ -22,10 +22,6 @@ export function Float({
 }: FloatProps) {
   const shouldReduceMotion = useReducedMotion();
 
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
   const [xAmp, yAmp] = amplitude;
   const [rxRot, ryRot, rzRot] = rotationRange;
 
@@ -33,23 +29,27 @@ export function Float({
     <motion.div
       className={className}
       initial={{ y: 0, x: 0, rotateX: 0, rotateY: 0, rotateZ: 0 }}
-      animate={{
-        y: [-yAmp / 2, yAmp / 2, -yAmp / 2],
-        x: [-xAmp / 2, xAmp / 2, -xAmp / 2],
-        rotateX: [-rxRot, rxRot, -rxRot],
-        rotateY: [-ryRot, ryRot, -ryRot],
-        rotateZ: [-rzRot, rzRot, -rzRot],
-      }}
+      animate={
+        shouldReduceMotion
+          ? { y: 0, x: 0, rotateX: 0, rotateY: 0, rotateZ: 0 }
+          : {
+              y: [-yAmp / 2, yAmp / 2, -yAmp / 2],
+              x: [-xAmp / 2, xAmp / 2, -xAmp / 2],
+              rotateX: [-rxRot, rxRot, -rxRot],
+              rotateY: [-ryRot, ryRot, -ryRot],
+              rotateZ: [-rzRot, rzRot, -rzRot],
+            }
+      }
       transition={{
         duration: speed,
         repeat: Infinity,
-        repeatType: "reverse",
+        repeatType: "loop",
         ease: "easeInOut",
         delay: timeOffset,
       }}
       style={{
         transformStyle: "preserve-3d",
-        willChange: "transform",
+        willChange: shouldReduceMotion ? "auto" : "transform",
       }}
     >
       {children}

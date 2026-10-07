@@ -20,26 +20,22 @@ const ProviderProfileSchema = new Schema<IProviderProfileDocument>(
       ref: "User",
       required: true,
       unique: true,
-      index: true,
     },
     businessName: {
       type: String,
       trim: true,
       maxlength: 120,
-      default: null,
     },
     bio: {
       type: String,
       trim: true,
       maxlength: 2000,
-      default: null,
     },
     rating: {
       type: Number,
       default: 0.0,
       min: 0,
       max: 5,
-      index: true,
     },
     reviewCount: {
       type: Number,
@@ -49,17 +45,14 @@ const ProviderProfileSchema = new Schema<IProviderProfileDocument>(
     isVerified: {
       type: Boolean,
       default: false,
-      index: true,
     },
     categories: {
       type: [String],
       default: [],
-      index: true,
     },
     hourlyRate: {
       type: Number,
       min: 0,
-      default: null,
     },
   },
   {
@@ -76,6 +69,12 @@ const ProviderProfileSchema = new Schema<IProviderProfileDocument>(
     },
   }
 );
+
+// Compound index for verified providers sorted by rating
+ProviderProfileSchema.index({ isVerified: 1, rating: -1 });
+
+// Full text search index on provider business name and bio
+ProviderProfileSchema.index({ businessName: "text", bio: "text" });
 
 export const ProviderProfileModel: Model<IProviderProfileDocument> =
   model<IProviderProfileDocument>("ProviderProfile", ProviderProfileSchema);

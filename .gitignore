@@ -17,4 +17,4 @@ skills/
 *.skills
 .local-skills/
 scratch/
-
+*.tsbuildinfo

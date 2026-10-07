@@ -1,13 +1,28 @@
-/**
- * Standard unified API response wrapper.
- */
-export interface ApiResponse<T = unknown> {
-  success: boolean;
+export interface ValidationErrorDetail {
+  field: string;
+  message: string;
+  code?: string;
+}
+
+export interface ApiSuccessResponse<T = unknown> {
+  success: true;
   data?: T;
   message?: string;
-  error?: string;
-  details?: unknown;
 }
+
+export interface ApiFailureResponse {
+  success: false;
+  error: string;
+  statusCode?: number;
+  details?: ValidationErrorDetail[] | unknown;
+  message?: string;
+  data?: undefined;
+}
+
+/**
+ * Standard unified API response wrapper (discriminated union on success).
+ */
+export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiFailureResponse;
 
 /**
  * Standard API error response shape.
@@ -16,7 +31,7 @@ export interface ApiErrorResponse {
   success: false;
   error: string;
   statusCode?: number;
-  details?: unknown;
+  details?: ValidationErrorDetail[] | unknown;
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useId, useMemo } from "react";
 import { cn } from "../../lib/utils";
 
 interface InteractiveGridPatternProps {
@@ -11,15 +11,43 @@ interface InteractiveGridPatternProps {
   squaresClassName?: string;
 }
 
-export function InteractiveGridPattern({
+export const InteractiveGridPattern = React.memo(function InteractiveGridPattern({
   width = 44,
   height = 44,
   squares = [28, 28],
   className,
   squaresClassName,
 }: InteractiveGridPatternProps) {
+  const patternId = useId();
   const [horizontal, vertical] = squares;
-  const [hoveredSquare, setHoveredSquare] = useState<number | null>(null);
+
+  // Memoize SVG rect nodes to eliminate 784 per-frame React re-renders
+  const gridSquares = useMemo(() => {
+    const total = horizontal * vertical;
+    const elements: React.JSX.Element[] = [];
+
+    for (let index = 0; index < total; index++) {
+      const x = (index % horizontal) * width;
+      const y = Math.floor(index / horizontal) * height;
+
+      elements.push(
+        <rect
+          key={index}
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          className={cn(
+            "stroke-transparent fill-transparent transition-all duration-300 motion-reduce:transition-none",
+            "hover:fill-indigo-500/25 hover:stroke-indigo-400/40",
+            squaresClassName
+          )}
+        />
+      );
+    }
+
+    return elements;
+  }, [horizontal, vertical, width, height, squaresClassName]);
 
   return (
     <svg
@@ -32,7 +60,7 @@ export function InteractiveGridPattern({
     >
       <defs>
         <pattern
-          id="interactive-grid"
+          id={patternId}
           width={width}
           height={height}
           patternUnits="userSpaceOnUse"
@@ -45,33 +73,8 @@ export function InteractiveGridPattern({
           />
         </pattern>
       </defs>
-      <rect width="100%" height="100%" fill="url(#interactive-grid)" />
-      <g>
-        {Array.from({ length: horizontal * vertical }).map((_, index) => {
-          const x = (index % horizontal) * width;
-          const y = Math.floor(index / horizontal) * height;
-          const isHovered = hoveredSquare === index;
-
-          return (
-            <rect
-              key={index}
-              x={x}
-              y={y}
-              width={width}
-              height={height}
-              className={cn(
-                "transition-all duration-300 stroke-transparent",
-                isHovered
-                  ? "fill-indigo-500/25 stroke-indigo-400/40"
-                  : "fill-transparent hover:fill-indigo-500/20",
-                squaresClassName
-              )}
-              onMouseEnter={() => setHoveredSquare(index)}
-              onMouseLeave={() => setHoveredSquare(null)}
-            />
-          );
-        })}
-      </g>
+      <rect width="100%" height="100%" fill={`url(#${patternId})`} pointerEvents="none" />
+      <g className="pointer-events-auto">{gridSquares}</g>
     </svg>
   );
-}
+});

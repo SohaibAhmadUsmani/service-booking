@@ -1,7 +1,7 @@
 "use client";
 
 import React, { ButtonHTMLAttributes, ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "../../lib/utils";
 
 interface ShimmerButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,11 +12,13 @@ interface ShimmerButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function ShimmerButton({
   children,
-  shimmerColor = "#ffffff",
+  shimmerColor = "rgba(255, 255, 255, 0.2)",
   className,
   disabled,
   ...props
 }: ShimmerButtonProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.button
       whileHover={disabled ? {} : { scale: 1.01 }}
@@ -30,12 +32,15 @@ export function ShimmerButton({
       {...(props as any)}
     >
       {/* Sweeping Shimmer light effect */}
-      <span
-        className="absolute inset-0 block -translate-x-full animate-[shimmer_3s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
-        style={{
-          backgroundSize: "200% 100%",
-        }}
-      />
+      {!disabled && !shouldReduceMotion && (
+        <span
+          className="absolute inset-0 block -translate-x-full animate-[shimmer_3s_infinite] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(90deg, transparent 0%, ${shimmerColor} 50%, transparent 100%)`,
+            backgroundSize: "200% 100%",
+          }}
+        />
+      )}
       <span className="relative z-10 flex items-center justify-center gap-2">
         {children}
       </span>

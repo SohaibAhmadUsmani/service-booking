@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef, useState, ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import React, { useRef, ReactNode } from "react";
+import { motion, useMotionValue, useSpring, useReducedMotion } from "framer-motion";
 
 interface FloatingCardProps {
   children: ReactNode;
@@ -19,14 +19,26 @@ export function FloatingCard({
   className = "",
 }: FloatingCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current || shouldReduceMotion) return;
+  // Motion values eliminate 240Hz React component render churn
+  const rawRotateX = useMotionValue(0);
+  const rawRotateY = useMotionValue(0);
+  const rawScale = useMotionValue(1);
+  const rawZ = useMotionValue(0);
+
+  const springConfig = { stiffness: 280, damping: 22 };
+  const springRotateX = useSpring(rawRotateX, springConfig);
+  const springRotateY = useSpring(rawRotateY, springConfig);
+  const springScale = useSpring(rawScale, springConfig);
+  const springZ = useSpring(rawZ, springConfig);
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === "touch" || shouldReduceMotion || !cardRef.current) return;
+
     const rect = cardRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     const mouseX = e.clientX - centerX;
@@ -35,52 +47,46 @@ export function FloatingCard({
     const rotX = -(mouseY / (rect.height / 2)) * rotateDepth;
     const rotY = (mouseX / (rect.width / 2)) * rotateDepth;
 
-    setRotateX(rotX);
-    setRotateY(rotY);
+    rawRotateX.set(rotX);
+    rawRotateY.set(rotY);
+    rawScale.set(1.03);
+    rawZ.set(translateDepth);
   }
 
-  function handleMouseLeave() {
-    setIsHovered(false);
-    setRotateX(0);
-    setRotateY(0);
+  function handlePointerLeave() {
+    rawRotateX.set(0);
+    rawRotateY.set(0);
+    rawScale.set(1);
+    rawZ.set(0);
   }
 
   return (
     <div
       ref={cardRef}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       style={{ perspective: 1000 }}
       className="inline-block"
     >
       <motion.div
         animate={
-          isHovered
-            ? {
-                rotateX,
-                rotateY,
-                scale: 1.03,
-                z: translateDepth,
-              }
-            : shouldReduceMotion
+          shouldReduceMotion
             ? {}
             : {
-                rotateX: [0, 1.5, 0, -1.5, 0],
                 y: [0, -6, 0, 6, 0],
               }
         }
-        transition={
-          isHovered
-            ? { type: "spring", stiffness: 300, damping: 20 }
-            : {
-                duration: 6,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: timeOffset,
-              }
-        }
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: timeOffset,
+        }}
         style={{
+          rotateX: springRotateX,
+          rotateY: springRotateY,
+          scale: springScale,
+          z: springZ,
           transformStyle: "preserve-3d",
           willChange: "transform",
         }}

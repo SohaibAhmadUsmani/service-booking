@@ -12,11 +12,26 @@ declare global {
   }
 }
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "super-secret-identity-key-2026-production";
+/**
+ * Returns and validates the JWT signing secret.
+ * Enforces minimum entropy and crashes early in production if missing.
+ */
+export function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "FATAL: JWT_SECRET environment variable must be defined and at least 32 characters in production."
+      );
+    }
+    return secret || "dev-identity-jwt-secret-key-32-chars-long-minimum!";
+  }
+  return secret;
+}
 
 /**
  * Middleware to authenticate requests via Bearer JWT token.
+ * Validates algorithmic whitelist and clock skew tolerance.
  */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
@@ -28,7 +43,11 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decoded = jwt.verify(token, getJwtSecret(), {
+      algorithms: ["HS256"],
+      clockTolerance: 30, // 30-second skew tolerance
+    }) as JwtPayload;
+
     req.user = decoded;
     next();
   } catch (error) {

@@ -37,9 +37,9 @@ export function SecurityHeroPanel() {
       <div className="relative z-10 my-auto py-12 max-w-lg">
         {/* Floating Glowing Shield Badge */}
         <Float speed={5} amplitude={[0, 10, 4]} rotationRange={[2, 3, 1]}>
-          <div className="relative mx-auto w-20 h-20 mb-8 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-purple-600/20 border border-indigo-400/40 backdrop-blur-xl flex items-center justify-center shadow-2xl shadow-indigo-500/40">
+          <div className="relative mx-auto w-20 h-20 mb-8 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-purple-600/20 border border-indigo-400/40 border-t-white/30 backdrop-blur-md flex items-center justify-center shadow-2xl shadow-indigo-500/30">
             {/* Ambient Pulsing Glow Ring */}
-            <div className="absolute inset-0 rounded-2xl bg-indigo-500/20 blur-md animate-ping" />
+            <div className="absolute inset-0 rounded-2xl bg-indigo-500/10 blur-sm pointer-events-none" />
             <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-inner">
               <ShieldCheck className="w-7 h-7 text-white" />
             </div>
@@ -54,8 +54,8 @@ export function SecurityHeroPanel() {
         </h1>
 
         <p className="mt-5 text-slate-300 text-center text-base md:text-lg leading-relaxed max-w-md mx-auto font-normal">
-          Join the most trusted identity management platform. Protect your
-          digital presence with enterprise-grade security controls.
+          Join the trusted service network. Experience effortless authentication
+          with multi-layer credential safety and instant verification.
         </p>
 
         {/* 3 Desynchronized Floating Metric Pills */}
@@ -67,7 +67,7 @@ export function SecurityHeroPanel() {
             timeOffset={0}
             className="rounded-2xl"
           >
-            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/70 border border-slate-700/60 backdrop-blur-xl shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
+            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/80 border border-slate-700/60 border-t-white/20 backdrop-blur-md shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
               <span className="text-indigo-400 font-bold text-lg tracking-tight flex items-center gap-1">
                 <NumberTicker value={99.9} decimalPlaces={1} />%
               </span>
@@ -84,7 +84,7 @@ export function SecurityHeroPanel() {
             timeOffset={0.35}
             className="rounded-2xl"
           >
-            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/70 border border-slate-700/60 backdrop-blur-xl shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
+            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/80 border border-slate-700/60 border-t-white/20 backdrop-blur-md shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
               <span className="text-indigo-400 font-bold text-lg tracking-tight flex items-center gap-1">
                 MFA
               </span>
@@ -101,7 +101,7 @@ export function SecurityHeroPanel() {
             timeOffset={0.7}
             className="rounded-2xl"
           >
-            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/70 border border-slate-700/60 backdrop-blur-xl shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
+            <div className="px-5 py-3.5 rounded-2xl bg-slate-900/80 border border-slate-700/60 border-t-white/20 backdrop-blur-md shadow-xl shadow-black/40 flex flex-col items-center justify-center min-w-[120px] transition-colors hover:border-indigo-400/60">
               <span className="text-indigo-400 font-bold text-lg tracking-tight flex items-center gap-1">
                 256-bit
               </span>

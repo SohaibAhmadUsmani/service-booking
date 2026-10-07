@@ -5,10 +5,12 @@ export interface IRefreshTokenDocument extends Document {
   tokenHash: string;
   familyId: string;
   deviceInfo?: string;
-  ipAddress?: string;
+  ipAddress?: string | null;
   isRevoked: boolean;
   expiresAt: Date;
-  replacedByTokenHash?: string;
+  rotatedAt?: Date | null;
+  replacedByTokenHash?: string | null;
+  replacementToken?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +27,6 @@ const RefreshTokenSchema = new Schema<IRefreshTokenDocument>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     familyId: {
       type: String,
@@ -49,7 +50,15 @@ const RefreshTokenSchema = new Schema<IRefreshTokenDocument>(
       type: Date,
       required: true,
     },
+    rotatedAt: {
+      type: Date,
+      default: null,
+    },
     replacedByTokenHash: {
+      type: String,
+      default: null,
+    },
+    replacementToken: {
       type: String,
       default: null,
     },
@@ -59,7 +68,7 @@ const RefreshTokenSchema = new Schema<IRefreshTokenDocument>(
   }
 );
 
-// TTL index to automatically purge expired sessions
+// TTL index to automatically purge expired sessions from MongoDB
 RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const RefreshTokenModel: Model<IRefreshTokenDocument> =

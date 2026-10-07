@@ -1,14 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import { ZodTypeAny, ZodError } from "zod";
 
 interface ValidationSchemas {
-  body?: AnyZodObject;
-  query?: AnyZodObject;
-  params?: AnyZodObject;
+  body?: ZodTypeAny;
+  query?: ZodTypeAny;
+  params?: ZodTypeAny;
 }
 
 /**
- * Express middleware to validate request body, query, or params using Zod schemas.
+ * Express middleware to validate request body, query, or params using any Zod schema (including refined schemas).
  */
 export function validateRequest(schemas: ValidationSchemas) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
@@ -24,11 +24,7 @@ export function validateRequest(schemas: ValidationSchemas) {
       }
       next();
     } catch (error) {
-      if (error instanceof ZodError) {
-        next(error);
-      } else {
-        next(error);
-      }
+      next(error);
     }
   };
 }
