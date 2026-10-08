@@ -26,6 +26,9 @@ export enum NotificationType {
   BookingCancelled = "booking_cancelled",
   UpcomingAppointment = "upcoming_appointment",
   BookingRescheduled = "booking_rescheduled",
+  BookingCompleted = "booking_completed",
+  PaymentReceived = "payment_received",
+  PaymentRefunded = "payment_refunded",
   NewReview = "new_review",
   ProviderUpdate = "provider_update",
 }
