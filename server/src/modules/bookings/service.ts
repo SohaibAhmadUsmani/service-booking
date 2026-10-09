@@ -1,5 +1,7 @@
 ﻿import { isValidObjectId } from "mongoose";
+import { NotificationType } from "@service-booking/shared";
 import { HttpError, availabilityService } from "../availability/service";
+import { notificationsService } from "../notifications/service";
 import { BOOKING_STATUSES, BookingStatus } from "./model";
 import { bookingsRepository } from "./repository";
 
@@ -51,6 +53,126 @@ async function requireOpenSlot(providerId: string, date: string, startTime: stri
   const slot = slots.find((s) => s.start === startTime);
   if (!slot) throw new HttpError(409, "That time is not available");
   return slot.end;
+}
+
+interface BookingNotifyContext {
+  _id: unknown;
+  bookingId: string;
+  customerId: { toString(): string };
+  providerId: { toString(): string };
+  date: string;
+  startTime: string;
+  status: string;
+}
+
+function bookingNotifyData(booking: BookingNotifyContext, extra?: Record<string, unknown>) {
+  return {
+    bookingDbId: String(booking._id),
+    bookingId: booking.bookingId,
+    date: booking.date,
+    startTime: booking.startTime,
+    status: booking.status,
+    ...extra,
+  };
+}
+
+async function notifyBookingEvent(
+  events: { userId: string; type: NotificationType; title: string; message: string }[],
+  data: Record<string, unknown>
+) {
+  for (const event of events) {
+    await notificationsService.notify({ ...event, data });
+  }
+}
+
+async function notifyStatusChange(booking: BookingNotifyContext, status: BookingStatus) {
+  const slot = `${booking.date} at ${booking.startTime}`;
+  const customer = booking.customerId.toString();
+  const provider = booking.providerId.toString();
+  const data = bookingNotifyData(booking);
+  const events: { userId: string; type: NotificationType; title: string; message: string }[] = [];
+
+  if (status === "confirmed") {
+    events.push(
+      {
+        userId: customer,
+        type: NotificationType.BookingConfirmed,
+        title: "Booking confirmed",
+        message: `Your booking ${booking.bookingId} on ${slot} is confirmed.`,
+      },
+      {
+        userId: provider,
+        type: NotificationType.BookingConfirmed,
+        title: "Booking confirmed",
+        message: `Booking ${booking.bookingId} on ${slot} is confirmed.`,
+      }
+    );
+  } else if (status === "cancelled") {
+    events.push(
+      {
+        userId: customer,
+        type: NotificationType.BookingCancelled,
+        title: "Booking cancelled",
+        message: `Your booking ${booking.bookingId} on ${slot} has been cancelled.`,
+      },
+      {
+        userId: provider,
+        type: NotificationType.BookingCancelled,
+        title: "Booking cancelled",
+        message: `Booking ${booking.bookingId} on ${slot} has been cancelled.`,
+      }
+    );
+  } else if (status === "completed") {
+    events.push(
+      {
+        userId: customer,
+        type: NotificationType.BookingCompleted,
+        title: "Booking completed",
+        message: `Your booking ${booking.bookingId} is complete. You can now leave a review.`,
+      },
+      {
+        userId: provider,
+        type: NotificationType.BookingCompleted,
+        title: "Booking completed",
+        message: `Booking ${booking.bookingId} is complete.`,
+      }
+    );
+  }
+
+  await notifyBookingEvent(events, data);
+}
+
+async function notifyRescheduled(
+  booking: BookingNotifyContext,
+  date: string,
+  startTime: string
+) {
+  const customer = booking.customerId.toString();
+  const provider = booking.providerId.toString();
+  const data = bookingNotifyData(booking, {
+    date,
+    startTime,
+    previousDate: booking.date,
+    previousStartTime: booking.startTime,
+  });
+
+  await notifyBookingEvent(
+    [
+      {
+        userId: customer,
+        type: NotificationType.BookingRescheduled,
+        title: "Booking rescheduled",
+        message: `Your booking ${booking.bookingId} was rescheduled to ${date} at ${startTime}.`,
+      },
+      {
+        userId: provider,
+        type: NotificationType.BookingRescheduled,
+        title: "Booking rescheduled",
+        message: `Booking ${booking.bookingId} was rescheduled to ${date} at ${startTime}.`,
+      },
+    ],
+    data
+  );
 }
 
 export const bookingsService = {
@@ -109,7 +231,9 @@ export const bookingsService = {
     if (!allowed.includes(status as BookingStatus)) {
       throw new HttpError(409, `Cannot change a ${booking.status} booking to ${status}`);
     }
-    return bookingsRepository.update(id, { status });
+    const updated = await bookingsRepository.update(id, { status });
+    await notifyStatusChange(booking, status as BookingStatus);
+    return updated;
   },
 
   async cancel(id: string) {
@@ -125,6 +249,8 @@ export const bookingsService = {
     assertNotPast(date);
 
     const endTime = await requireOpenSlot(String(booking.providerId), date, startTime, id);
-    return bookingsRepository.update(id, { date, startTime, endTime });
+    const updated = await bookingsRepository.update(id, { date, startTime, endTime });
+    await notifyRescheduled(booking, date, startTime);
+    return updated;
   },
 };
