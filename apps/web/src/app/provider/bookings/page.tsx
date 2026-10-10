@@ -1,88 +1,131 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type Status = "Pending" | "Confirmed" | "Completed" | "Cancelled" | "No-show";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiStatus, statusLabel, useAuthedApi } from "../../../lib/api/useAuthedApi";
 
 type Booking = {
-  id: string;
-  customer: string;
-  service: string;
+  _id: string;
+  bookingId: string;
+  customerId: string;
+  serviceId: string;
   date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  startTime: string; // HH:mm
+  endTime: string;
   price: number;
-  status: Status;
+  status: ApiStatus;
+  details?: { name?: string; phone?: string };
 };
 
-const initialBookings: Booking[] = [
-  { id: "BK-1001", customer: "Ali Khan", service: "Home Cleaning", date: "2026-10-08", time: "10:00", price: 60, status: "Confirmed" },
-  { id: "BK-1002", customer: "Sara Ahmed", service: "AC Repair", date: "2026-10-08", time: "14:00", price: 45, status: "Pending" },
-  { id: "BK-1003", customer: "Usman Raza", service: "Pipe Leak Fix", date: "2026-10-09", time: "11:30", price: 35, status: "Completed" },
-  { id: "BK-1004", customer: "Hina Malik", service: "Home Cleaning", date: "2026-10-10", time: "09:00", price: 60, status: "Pending" },
-  { id: "BK-1005", customer: "Bilal Shah", service: "AC Repair", date: "2026-10-06", time: "16:00", price: 45, status: "No-show" },
-  { id: "BK-1006", customer: "Ayesha Noor", service: "Pipe Leak Fix", date: "2026-10-05", time: "12:00", price: 35, status: "Cancelled" },
-];
+const filters: ("all" | ApiStatus)[] = ["all", "pending", "confirmed", "completed", "cancelled", "no_show"];
 
-const filters: ("All" | Status)[] = ["All", "Pending", "Confirmed", "Completed", "Cancelled", "No-show"];
-
-const badge: Record<Status, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Confirmed: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Cancelled: "bg-gray-200 text-gray-700",
-  "No-show": "bg-red-100 text-red-700",
+const badge: Record<ApiStatus, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  completed: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-200 text-gray-700",
+  no_show: "bg-red-100 text-red-700",
 };
 
-// Which actions are allowed from each status
-const actions: Record<Status, { label: string; to: Status; danger?: boolean }[]> = {
-  Pending: [
-    { label: "Confirm", to: "Confirmed" },
-    { label: "Cancel", to: "Cancelled", danger: true },
+// Allowed changes, from Shanza's status table
+const actions: Record<ApiStatus, { label: string; to: ApiStatus; danger?: boolean }[]> = {
+  pending: [
+    { label: "Confirm", to: "confirmed" },
+    { label: "Cancel", to: "cancelled", danger: true },
   ],
-  Confirmed: [
-    { label: "Complete", to: "Completed" },
-    { label: "No-show", to: "No-show", danger: true },
-    { label: "Cancel", to: "Cancelled", danger: true },
+  confirmed: [
+    { label: "Complete", to: "completed" },
+    { label: "No-show", to: "no_show", danger: true },
+    { label: "Cancel", to: "cancelled", danger: true },
   ],
-  Completed: [],
-  Cancelled: [],
-  "No-show": [],
+  completed: [],
+  cancelled: [],
+  no_show: [],
 };
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [filter, setFilter] = useState<"All" | Status>("All");
+  const request = useAuthedApi();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | ApiStatus>("all");
   const [query, setQuery] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const json = await request<unknown>("/api/bookings");
+      const list = Array.isArray(json)
+        ? json
+        : ((json as { data?: unknown }).data as unknown[]) ?? [];
+      setBookings(list as Booking[]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load bookings");
+    } finally {
+      setLoading(false);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return bookings
-      .filter((b) => filter === "All" || b.status === filter)
+      .filter((b) => filter === "all" || b.status === filter)
       .filter(
         (b) =>
           !q ||
-          b.id.toLowerCase().includes(q) ||
-          b.customer.toLowerCase().includes(q) ||
-          b.service.toLowerCase().includes(q)
+          b.bookingId.toLowerCase().includes(q) ||
+          (b.details?.name ?? "").toLowerCase().includes(q)
       )
-      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+      .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
   }, [bookings, filter, query]);
 
-  function counts(s: "All" | Status) {
-    return s === "All" ? bookings.length : bookings.filter((b) => b.status === s).length;
+  function count(s: "all" | ApiStatus) {
+    return s === "all" ? bookings.length : bookings.filter((b) => b.status === s).length;
   }
 
-  function changeStatus(b: Booking, to: Status) {
-    if (to === "Cancelled" || to === "No-show") {
-      if (!window.confirm(`Mark ${b.id} (${b.customer}) as ${to}?`)) return;
+  async function changeStatus(b: Booking, to: ApiStatus) {
+    if (to === "cancelled" || to === "no_show") {
+      if (!window.confirm(`Mark ${b.bookingId} as ${statusLabel[to]}?`)) return;
     }
-    // TODO: call Shanza's bookings API to update status
-    setBookings((list) => list.map((x) => (x.id === b.id ? { ...x, status: to } : x)));
+    setBusyId(b._id);
+    setError("");
+    try {
+      const updated =
+        to === "cancelled"
+          ? await request<Booking>(`/api/bookings/${b._id}/cancel`, { method: "PATCH" })
+          : await request<Booking>(`/api/bookings/${b._id}/status`, {
+              method: "PATCH",
+              body: { status: to },
+            });
+      setBookings((list) =>
+        list.map((x) => (x._id === b._id ? { ...x, ...updated, status: updated.status ?? to } : x))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update booking");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Bookings</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Bookings</h1>
+        <button onClick={load} className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -96,14 +139,14 @@ export default function BookingsPage() {
                   : "bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {f} ({counts(f)})
+              {f === "all" ? "All" : statusLabel[f]} ({count(f)})
             </button>
           ))}
         </div>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search ID, customer, service"
+          placeholder="Search ID or customer"
           className="w-64 rounded-lg border px-3 py-2 text-sm"
         />
       </div>
@@ -114,7 +157,7 @@ export default function BookingsPage() {
             <tr>
               <th className="px-5 py-3">Booking ID</th>
               <th className="px-5 py-3">Customer</th>
-              <th className="px-5 py-3">Service</th>
+              <th className="px-5 py-3">Phone</th>
               <th className="px-5 py-3">Date</th>
               <th className="px-5 py-3">Time</th>
               <th className="px-5 py-3">Price</th>
@@ -123,34 +166,47 @@ export default function BookingsPage() {
             </tr>
           </thead>
           <tbody>
-            {visible.map((b) => (
-              <tr key={b.id} className="border-t">
-                <td className="px-5 py-3 font-medium">{b.id}</td>
-                <td className="px-5 py-3">{b.customer}</td>
-                <td className="px-5 py-3">{b.service}</td>
-                <td className="px-5 py-3">{b.date}</td>
-                <td className="px-5 py-3">{b.time}</td>
-                <td className="px-5 py-3">${b.price}</td>
-                <td className="px-5 py-3">
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${badge[b.status]}`}>
-                    {b.status}
-                  </span>
-                </td>
-                <td className="space-x-3 px-5 py-3">
-                  {actions[b.status].length === 0 && <span className="text-gray-400">—</span>}
-                  {actions[b.status].map((a) => (
-                    <button
-                      key={a.label}
-                      onClick={() => changeStatus(b, a.to)}
-                      className={a.danger ? "text-red-600 hover:underline" : "text-indigo-600 hover:underline"}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
+            {loading && (
+              <tr>
+                <td colSpan={8} className="px-5 py-8 text-center text-gray-500">
+                  Loading bookings...
                 </td>
               </tr>
-            ))}
-            {visible.length === 0 && (
+            )}
+            {!loading &&
+              visible.map((b) => (
+                <tr key={b._id} className="border-t">
+                  <td className="px-5 py-3 font-medium">{b.bookingId}</td>
+                  <td className="px-5 py-3">{b.details?.name ?? "Customer"}</td>
+                  <td className="px-5 py-3">{b.details?.phone ?? "—"}</td>
+                  <td className="px-5 py-3">{b.date}</td>
+                  <td className="px-5 py-3">
+                    {b.startTime} - {b.endTime}
+                  </td>
+                  <td className="px-5 py-3">{Number(b.price).toLocaleString()}</td>
+                  <td className="px-5 py-3">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${badge[b.status]}`}>
+                      {statusLabel[b.status]}
+                    </span>
+                  </td>
+                  <td className="space-x-3 px-5 py-3">
+                    {actions[b.status]?.length === 0 && <span className="text-gray-400">—</span>}
+                    {actions[b.status]?.map((a) => (
+                      <button
+                        key={a.label}
+                        disabled={busyId === b._id}
+                        onClick={() => changeStatus(b, a.to)}
+                        className={`disabled:opacity-50 ${
+                          a.danger ? "text-red-600 hover:underline" : "text-indigo-600 hover:underline"
+                        }`}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            {!loading && visible.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-5 py-8 text-center text-gray-500">
                   No bookings match this filter.
