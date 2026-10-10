@@ -1,7 +1,8 @@
-﻿import { isValidObjectId } from "mongoose";
+import { isValidObjectId } from "mongoose";
 import { HttpError, availabilityService } from "../availability/service";
 import { BOOKING_STATUSES, BookingStatus } from "./model";
 import { bookingsRepository } from "./repository";
+import { isPastSlot } from "./time";
 
 export interface CreateBookingInput {
   customerId: string;
@@ -32,9 +33,9 @@ function assertId(value: unknown, name: string) {
   }
 }
 
-function assertNotPast(date: string) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (date < today) throw new HttpError(400, "Cannot book a date in the past");
+function assertNotPast(date: string, startTime: string) {
+  // "now" uses Pakistan time, see time.ts
+  if (isPastSlot(date, startTime)) throw new HttpError(400, "That date or time has already passed");
 }
 
 async function findOrFail(id: string) {
@@ -63,7 +64,7 @@ export const bookingsService = {
       throw new HttpError(400, "price must be a number, 0 or more");
     }
     if (typeof input.date !== "string") throw new HttpError(400, "date is required (YYYY-MM-DD)");
-    assertNotPast(input.date);
+    assertNotPast(input.date, input.startTime);
 
     const endTime = await requireOpenSlot(input.providerId, input.date, input.startTime);
 
@@ -122,7 +123,7 @@ export const bookingsService = {
       throw new HttpError(409, `Cannot reschedule a ${booking.status} booking`);
     }
     if (typeof date !== "string") throw new HttpError(400, "date is required (YYYY-MM-DD)");
-    assertNotPast(date);
+    assertNotPast(date, startTime);
 
     const endTime = await requireOpenSlot(String(booking.providerId), date, startTime, id);
     return bookingsRepository.update(id, { date, startTime, endTime });
