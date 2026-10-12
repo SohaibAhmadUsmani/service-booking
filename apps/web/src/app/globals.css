@@ -3,8 +3,48 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 239 84% 67%;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 4%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 0 0% 14%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 239 84% 67%;
 }
 
 * {
@@ -26,9 +66,15 @@ html {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
   min-height: 100vh;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
 }
 
 /* Lenis smooth scroll recommended styles */
@@ -52,4 +98,90 @@ html.lenis.lenis-smooth,
 
 .lenis.lenis-scrolling iframe {
   pointer-events: none;
+}
+
+/* Prism landing — CSS-only entrances (inspired by 21st Prism template) */
+@keyframes prism-blur-in {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes prism-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prism-blur-in {
+  animation: prism-blur-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.prism-fade-up {
+  opacity: 0;
+  animation: prism-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-blur-in,
+  .prism-fade-up {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+.landing-service-card {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s ease,
+    border-color 0.45s ease;
+}
+
+.landing-service-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
+  border-color: hsl(var(--ring) / 0.35);
+}
+
+.dark .landing-service-card:hover {
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
+}
+
+.landing-stat-card {
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.5s ease,
+    border-color 0.5s ease;
+}
+
+.landing-stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.12);
+  border-color: hsl(var(--ring) / 0.3);
+}
+
+.dark .landing-stat-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.landing-category-card img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-category-card:hover img {
+  transform: scale(1.08);
 }
