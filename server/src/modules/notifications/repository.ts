@@ -41,6 +41,16 @@ export const notificationsRepository = {
       .then(toDto);
   },
 
+  /** True when this recipient already has a notification of `type` for this booking. */
+  async existsForBooking(
+    userId: string,
+    type: NotificationType,
+    bookingDbId: string
+  ): Promise<boolean> {
+    const existing = await Notification.exists({ userId, type, "data.bookingDbId": bookingDbId });
+    return existing !== null;
+  },
+
   async list(ownerId: string, filters: NotificationListFilters) {
     const query: Record<string, unknown> = { userId: ownerId };
     if (filters.type) query.type = filters.type;

@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "test:reviews": "tsx tests/phase2-reviews.test.ts",
     "test:payments": "tsx tests/phase3-payments.test.ts",
-    "test:notifications": "tsx tests/phase4-notifications.test.ts"
+    "test:notifications": "tsx tests/phase4-notifications.test.ts",
+    "test:reminders": "tsx tests/phase4b-reminders.test.ts"
   },
   "dependencies": {
     "@service-booking/shared": "*",

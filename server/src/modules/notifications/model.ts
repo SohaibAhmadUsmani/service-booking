@@ -27,5 +27,15 @@ const notificationSchema = new Schema(
 
 notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, type: 1, createdAt: -1 });
+// One reminder per booking per recipient. The partial filter scopes the unique
+// constraint to appointment reminders so other notification types are unaffected.
+notificationSchema.index(
+  { userId: 1, type: 1, "data.bookingDbId": 1 },
+  {
+    unique: true,
+    partialFilterExpression: { type: NotificationType.UpcomingAppointment },
+    name: "uniq_upcoming_reminder_per_booking",
+  }
+);
 
 export const Notification = model("Notification", notificationSchema);
