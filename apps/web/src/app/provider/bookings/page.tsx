@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../../lib/auth/AuthContext";
 import { ApiStatus, statusLabel, useAuthedApi } from "../../../lib/api/useAuthedApi";
 
 type Booking = {
@@ -44,6 +45,10 @@ const actions: Record<ApiStatus, { label: string; to: ApiStatus; danger?: boolea
 
 export default function BookingsPage() {
   const request = useAuthedApi();
+  const { user } = useAuth();
+  const info = (user ?? {}) as Record<string, unknown>;
+  const providerId = String(info.id ?? info._id ?? "");
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,10 +57,13 @@ export default function BookingsPage() {
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
+    if (!providerId) return;
     setLoading(true);
     setError("");
     try {
-      const json = await request<unknown>("/api/bookings");
+      // providerId is required until the login checks (PR #12) are merged;
+      // after that the token supplies it and this stays harmless
+      const json = await request<unknown>(`/api/bookings?providerId=${encodeURIComponent(providerId)}`);
       const list = Array.isArray(json)
         ? json
         : ((json as { data?: unknown }).data as unknown[]) ?? [];
@@ -65,7 +73,7 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [providerId, request]);
 
   useEffect(() => {
     load();
@@ -110,6 +118,10 @@ export default function BookingsPage() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  if (!providerId) {
+    return <div className="text-sm text-gray-500">Loading your account...</div>;
   }
 
   return (
