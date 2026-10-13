@@ -1,4 +1,5 @@
-﻿import { Router } from "express";
+import { Router } from "express";
+import { requireAuth } from "../../middleware/auth";
 import {
   cancelBooking,
   changeBookingStatus,
@@ -10,6 +11,8 @@ import {
 
 /** Owner: Shanza */
 export const bookingsRouter = Router();
+
+bookingsRouter.use(requireAuth);
 
 bookingsRouter.post("/", createBooking);
 bookingsRouter.get("/", listBookings);

@@ -16,6 +16,10 @@ export class AdminService {
   }
 
   async updateUserRole(id: string, role: string) {
+    const validRoles = ["customer", "provider", "admin"];
+    if (!validRoles.includes(role)) {
+      throw new Error(`Invalid user role: ${role}. Valid roles are: ${validRoles.join(", ")}`);
+    }
     return this.repo.updateUser(id, { role });
   }
 

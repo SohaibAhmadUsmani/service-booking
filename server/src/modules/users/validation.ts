@@ -14,12 +14,16 @@ export const updateProfileSchema = z
     avatarUrl: z
       .string()
       .trim()
-      .url("Avatar must be a valid URL")
-      .regex(/^https?:\/\//i, "Avatar URL must use http or https protocol")
+      .url("Invalid URL")
+      .refine(
+        (url) => url.startsWith("https://"),
+        { message: "Avatar URL must use HTTPS protocol" }
+      )
       .optional()
       .or(z.literal("")),
   })
-  .strict();
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, { message: "At least one field must be provided" });
 
 export const changePasswordSchema = z
   .object({

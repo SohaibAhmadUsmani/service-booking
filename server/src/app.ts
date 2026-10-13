@@ -1,5 +1,7 @@
+import crypto from "crypto";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import mongoose from "mongoose";
 import { errorHandler } from "./middleware/errorHandler";
 import { registerModuleRoutes } from "./modules/registerRoutes";
@@ -10,13 +12,26 @@ export function createApp() {
   // Trust first proxy for accurate IP rate limiting in reverse proxy / load balancer setups
   app.set("trust proxy", 1);
 
+  app.use(helmet());
+
+  // Request ID correlation middleware
+  app.use((req, res, next) => {
+    const requestId = (req.headers["x-request-id"] as string) || crypto.randomUUID();
+    req.headers["x-request-id"] = requestId;
+    res.setHeader("X-Request-Id", requestId);
+    next();
+  });
+
   // Security CORS configuration
   app.use(
     cors({
       origin: process.env.FRONTEND_URL
         ? [process.env.FRONTEND_URL, "http://localhost:3000"]
-        : true,
+        : ["http://localhost:3000"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
       credentials: true,
+      maxAge: 86400,
     })
   );
 

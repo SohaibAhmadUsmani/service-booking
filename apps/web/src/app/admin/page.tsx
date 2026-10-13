@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { UserRole } from "@service-booking/shared";
 import {
   LayoutDashboard,
   Users,
@@ -354,7 +356,8 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900 antialiased">
+    <ProtectedRoute allowedRoles={[UserRole.Admin]} redirectTo="/login">
+      <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900 antialiased">
       {/* SIDEBAR (BRAND DARK - ServiceHub) */}
       <aside className="w-full lg:w-64 bg-[#0B0E1B] text-slate-300 border-r border-slate-800 flex flex-col justify-between p-5 flex-shrink-0">
         <div>
@@ -1380,5 +1383,6 @@ export default function AdminDashboardPage() {
         </main>
       </div>
     </div>
+  </ProtectedRoute>
   );
 }
