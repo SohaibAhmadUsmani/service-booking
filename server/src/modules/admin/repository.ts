@@ -183,6 +183,12 @@ export class AdminRepository {
     return this.db.collection("users").updateOne({ _id: oid }, { $set: updates });
   }
 
+  async deleteUser(id: string) {
+    if (!this.db) throw new Error("Database connection not ready");
+    const oid = new mongoose.Types.ObjectId(id);
+    return this.db.collection("users").deleteOne({ _id: oid });
+  }
+
   async getProviders() {
     if (!this.db) throw new Error("Database connection not ready");
     const providers = await this.db.collection("providerprofiles").find().toArray();
@@ -329,6 +335,12 @@ export class AdminRepository {
     if (!this.db) throw new Error("Database connection not ready");
     const oid = new mongoose.Types.ObjectId(id);
     return this.db.collection("reviews").updateOne({ _id: oid }, { $set: { isHidden, updatedAt: new Date() } });
+  }
+
+  async deleteReview(id: string) {
+    if (!this.db) throw new Error("Database connection not ready");
+    const oid = new mongoose.Types.ObjectId(id);
+    return this.db.collection("reviews").deleteOne({ _id: oid });
   }
 
   async getComplaints() {

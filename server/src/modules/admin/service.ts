@@ -19,6 +19,10 @@ export class AdminService {
     return this.repo.updateUser(id, { role });
   }
 
+  async deleteUser(id: string) {
+    return this.repo.deleteUser(id);
+  }
+
   async getProviders() {
     return this.repo.getProviders();
   }
@@ -88,6 +92,10 @@ export class AdminService {
 
   async moderateReview(id: string, isHidden: boolean) {
     return this.repo.moderateReview(id, isHidden);
+  }
+
+  async deleteReview(id: string) {
+    return this.repo.deleteReview(id);
   }
 
   async getComplaints() {

@@ -39,6 +39,16 @@ export class AdminController {
     }
   }
 
+  static async deleteUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await adminService.deleteUser(id);
+      res.json({ status: "ok", message: "User deleted successfully" });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  }
+
   static async getProviders(_req: Request, res: Response) {
     try {
       const providers = await adminService.getProviders();
@@ -176,6 +186,16 @@ export class AdminController {
       const { isHidden } = req.body;
       await adminService.moderateReview(id, Boolean(isHidden));
       res.json({ status: "ok", message: "Review updated" });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  }
+
+  static async deleteReview(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await adminService.deleteReview(id);
+      res.json({ status: "ok", message: "Review deleted successfully" });
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
     }
