@@ -1,6 +1,7 @@
-﻿import { isValidObjectId } from "mongoose";
+import { isValidObjectId } from "mongoose";
 import type { NextFunction, Request, Response } from "express";
 import { bookingsRepository } from "../bookings/repository";
+import { isPastSlot } from "../bookings/time";
 import { HttpError, availabilityService } from "./service";
 
 function handle(err: unknown, res: Response, next: NextFunction) {
@@ -32,7 +33,9 @@ export async function getSlots(req: Request, res: Response, next: NextFunction) 
     if (!isValidObjectId(providerId)) throw new HttpError(400, "Invalid providerId");
     const date = String(req.query.date ?? "");
     const booked = await bookingsRepository.activeStartTimes(providerId, date);
-    res.json({ date, slots: await availabilityService.getSlots(providerId, date, booked) });
+    const slots = await availabilityService.getSlots(providerId, date, booked);
+    // Hide times that have already passed (matters when the date is today).
+    res.json({ date, slots: slots.filter((s) => !isPastSlot(date, s.start)) });
   } catch (err) {
     handle(err, res, next);
   }
