@@ -1,0 +1,16 @@
+warning: in the working copy of 'apps/web/src/app/(customer)/notifications/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/lib/api/client.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/modules/notifications/routes.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/modules/payments/routes.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/src/modules/reviews/routes.ts', LF will be replaced by CRLF the next time Git touches it
+ apps/web/src/app/(customer)/notifications/page.tsx | 448 [32m+++++++++++++++[m[31m-[m
+ apps/web/src/lib/api/client.ts                     |  84 [32m++[m[31m-[m
+ package-lock.json                                  | 565 [32m+++++++++++++++++++++[m
+ server/package.json                                |   6 [32m+[m[31m-[m
+ server/src/modules/bookings/service.ts             | 130 [32m++++[m[31m-[m
+ server/src/modules/notifications/routes.ts         |  46 [32m+[m[31m-[m
+ server/src/modules/payments/routes.ts              |  63 [32m++[m[31m-[m
+ server/src/modules/reviews/routes.ts               |  45 [32m+[m[31m-[m
+ shared/types/domain.ts                             |   3 [32m+[m
+ shared/types/index.ts                              |   3 [32m+[m
+ 10 files changed, 1374 insertions(+), 19 deletions(-)

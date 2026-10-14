@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SmoothScrollProvider } from "../components/providers/SmoothScrollProvider";
+import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { AuthProvider } from "../lib/auth/AuthContext";
 
 export const metadata: Metadata = {
@@ -14,11 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased selection:bg-indigo-500 selection:text-white">
-        <SmoothScrollProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </SmoothScrollProvider>
+        <ThemeProvider>
+          <SmoothScrollProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </SmoothScrollProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
