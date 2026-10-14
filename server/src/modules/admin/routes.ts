@@ -1,18 +1,25 @@
 import { Router } from "express";
 import { AdminController } from "./controller";
+import { requireAuth, requireRole } from "../../middleware/auth";
+import { UserRole } from "@service-booking/shared";
 
 /** Owner: Aiman */
 export const adminRouter = Router();
 
-// Platform health & overview status
+// Platform health status (unauthenticated)
 adminRouter.get("/", (req, res) => {
   res.json({ module: "admin", status: "ready" });
 });
+
+// Enforce authentication and Admin role for all administrative endpoints
+adminRouter.use(requireAuth, requireRole(UserRole.Admin));
+
 adminRouter.get("/overview", AdminController.getOverview);
 
 // User management
 adminRouter.get("/users", AdminController.getUsers);
 adminRouter.patch("/users/:id", AdminController.updateUser);
+adminRouter.delete("/users/:id", AdminController.deleteUser);
 
 // Provider management
 adminRouter.get("/providers", AdminController.getProviders);
@@ -37,6 +44,7 @@ adminRouter.patch("/bookings/:id/status", AdminController.updateBookingStatus);
 // Reviews management
 adminRouter.get("/reviews", AdminController.getReviews);
 adminRouter.patch("/reviews/:id", AdminController.moderateReview);
+adminRouter.delete("/reviews/:id", AdminController.deleteReview);
 
 // Complaints management
 adminRouter.get("/complaints", AdminController.getComplaints);

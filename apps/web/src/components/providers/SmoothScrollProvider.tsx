@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 
 export function SmoothScrollProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    // Disable Lenis smooth scrolling on /admin to allow native fast mouse wheel scrolling
+    if (pathname?.startsWith("/admin")) return;
+
     // Respect OS user preference for reduced motion
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"

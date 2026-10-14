@@ -6,6 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test:identity": "tsx tests/phase1-identity-auth.test.ts",
     "test:reviews": "tsx tests/phase2-reviews.test.ts",
     "test:payments": "tsx tests/phase3-payments.test.ts",
     "test:notifications": "tsx tests/phase4-notifications.test.ts"
@@ -16,6 +17,7 @@
     "cors": "^2.8.5",
     "dotenv": "^18.0.5",
     "express": "^4.21.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.10.4",
     "pg": "^8.23.1",
@@ -27,6 +29,7 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
     "mongodb-memory-server": "^11.3.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

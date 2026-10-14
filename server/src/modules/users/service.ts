@@ -18,6 +18,7 @@ function formatUserProfile(
     lastName: user.lastName,
     phone: user.phone || undefined,
     avatarUrl: user.avatarUrl || undefined,
+    isEmailVerified: user.isEmailVerified ?? false,
     providerDetails: providerDetails !== undefined ? providerDetails : null,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
@@ -78,13 +79,13 @@ export class UserService {
     const updateFields: Record<string, unknown> = {};
     if (data.firstName !== undefined) updateFields.firstName = data.firstName;
     if (data.lastName !== undefined) updateFields.lastName = data.lastName;
-    if (data.phone !== undefined) updateFields.phone = data.phone || undefined;
-    if (data.avatarUrl !== undefined) updateFields.avatarUrl = data.avatarUrl || undefined;
+    if (data.phone !== undefined) updateFields.phone = data.phone?.trim() ? data.phone.trim() : undefined;
+    if (data.avatarUrl !== undefined) updateFields.avatarUrl = data.avatarUrl?.trim() ? data.avatarUrl.trim() : undefined;
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { $set: updateFields },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!updatedUser || !updatedUser.isActive) {
@@ -128,6 +129,32 @@ export class UserService {
     await user.save();
 
     // Revoke all existing refresh token families for this user
+    await RefreshTokenModel.updateMany(
+      { userId: user._id },
+      { $set: { isRevoked: true } }
+    );
+  }
+
+  /**
+   * Deactivate and soft-delete user account (GDPR Right-to-be-Forgotten).
+   * Revokes all active refresh sessions and increments tokenVersion.
+   */
+  async deleteAccount(userId: string): Promise<void> {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new AppError("Invalid user identifier.", 400);
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user || !user.isActive) {
+      throw new AppError("User not found or account is already deactivated.", 404);
+    }
+
+    user.isActive = false;
+    user.deletedAt = new Date();
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    // Revoke all refresh tokens
     await RefreshTokenModel.updateMany(
       { userId: user._id },
       { $set: { isRevoked: true } }

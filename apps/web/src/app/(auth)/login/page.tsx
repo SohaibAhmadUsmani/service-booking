@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const isSubmitting = isLoading;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -38,14 +39,40 @@ export default function LoginPage() {
 
   const isSubmittingRef = useRef(false);
 
-  // Parse redirect query param if available
+  // Form reset on unmount
+  useEffect(() => {
+    return () => {
+      setFieldErrors({});
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setInfoMessage(null);
+    };
+  }, []);
+
+  // Parse redirect and email query params if available and strictly validate redirect
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get("email");
+      if (emailParam) {
+        setEmail(emailParam);
+      }
       const redirect = params.get("redirect");
-      if (redirect && redirect.startsWith("/")) {
-        setRedirectPath(redirect);
+      if (
+        redirect &&
+        redirect.startsWith("/") &&
+        !redirect.startsWith("//") &&
+        !redirect.includes("\\")
+      ) {
+        try {
+          const parsed = new URL(redirect, window.location.origin);
+          if (parsed.origin === window.location.origin) {
+            setRedirectPath(parsed.pathname + parsed.search);
+          }
+        } catch {
+          // Ignore invalid URL
+        }
       }
     }
   }, []);
@@ -122,30 +149,54 @@ export default function LoginPage() {
     }
   }
 
-  function handleForgotPassword(e: React.MouseEvent) {
+  async function handleForgotPassword(e: React.MouseEvent) {
     e.preventDefault();
-    setInfoMessage(
-      "Password reset instructions have been dispatched to your email address if an account exists."
-    );
+    if (!email.trim()) {
+      setErrorMessage("Please enter your email address above to receive password reset instructions.");
+      return;
+    }
+
+    setErrorMessage(null);
+    setInfoMessage("Sending password reset request...");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Unable to send reset instructions.");
+      }
+
+      setInfoMessage(data.message || "Password reset instructions have been dispatched to your email address.");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to request password reset.");
+      setInfoMessage(null);
+    }
   }
 
   return (
-    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white">
+    <main className="min-h-screen lg:h-screen grid grid-cols-1 lg:grid-cols-2 bg-white lg:overflow-hidden">
       {/* LEFT BRAND HERO PANEL */}
-      <SecurityHeroPanel />
+      <div className="hidden lg:block lg:h-screen lg:overflow-hidden">
+        <SecurityHeroPanel />
+      </div>
 
       {/* RIGHT AUTH CARD FORM */}
       <div
         data-lenis-prevent
-        className="flex flex-col justify-between p-6 sm:p-10 lg:p-14 overflow-y-auto"
+        className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-y-auto min-h-screen lg:h-screen"
       >
-        <div className="w-full max-w-md mx-auto my-auto">
+        <div className="w-full max-w-md mx-auto my-auto py-8">
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               Welcome back
             </h2>
-            <p className="mt-1 text-sm text-slate-500 font-normal">
+            <p className="mt-1 text-sm text-slate-600 font-normal">
               Enter your credentials to access your dashboard and bookings.
             </p>
           </div>
@@ -154,6 +205,7 @@ export default function LoginPage() {
           {errorMessage && (
             <div
               role="alert"
+              aria-live="polite"
               className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2.5 animate-in fade-in"
             >
               <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
@@ -164,6 +216,7 @@ export default function LoginPage() {
           {infoMessage && (
             <div
               role="status"
+              aria-live="polite"
               className="mb-5 p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 text-xs font-medium flex items-start gap-2.5 animate-in fade-in"
             >
               <Info className="w-4 h-4 text-sky-600 flex-shrink-0 mt-0.5" />
@@ -173,7 +226,8 @@ export default function LoginPage() {
 
           {successMessage && (
             <div
-              role="status"
+              role="alert"
+              aria-live="polite"
               className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-start gap-2.5 animate-in fade-in"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -210,11 +264,13 @@ export default function LoginPage() {
                       setFieldErrors((prev) => ({ ...prev, email: "" }));
                     }
                   }}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px]"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby="email-error"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
               </div>
               {fieldErrors.email && (
-                <p className="mt-1 text-xs text-rose-600 font-medium">
+                <p id="email-error" className="mt-1 text-xs text-rose-600 font-medium">
                   {fieldErrors.email}
                 </p>
               )}
@@ -256,13 +312,15 @@ export default function LoginPage() {
                       setFieldErrors((prev) => ({ ...prev, password: "" }));
                     }
                   }}
-                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px]"
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby="password-error"
+                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 <button
                   type="button"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -272,7 +330,7 @@ export default function LoginPage() {
                 </button>
               </div>
               {fieldErrors.password && (
-                <p className="mt-1 text-xs text-rose-600 font-medium">
+                <p id="password-error" className="mt-1 text-xs text-rose-600 font-medium">
                   {fieldErrors.password}
                 </p>
               )}
@@ -299,10 +357,12 @@ export default function LoginPage() {
             {/* Submit Shimmer CTA */}
             <ShimmerButton
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-500/30 transition-all mt-3 min-h-[44px] cursor-pointer"
+              disabled={isSubmitting}
+              className={`w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-500/30 transition-all mt-3 min-h-[44px] cursor-pointer ${
+                isSubmitting ? "pointer-events-none opacity-50" : ""
+              }`}
             >
-              <span>{isLoading ? "Signing in..." : "Sign in"}</span>
+              <span>{isSubmitting ? "Signing in..." : "Sign in"}</span>
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </ShimmerButton>
           </form>

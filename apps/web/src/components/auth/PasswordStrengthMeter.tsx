@@ -157,12 +157,13 @@ export function PasswordStrengthMeter({
       </div>
 
       {/* Animated 5-Criteria Requirement Checklist */}
-      <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-        {criteriaList.map((item) => (
+      <div className="grid grid-cols-2 gap-y-2 gap-x-3 pt-0.5">
+        {criteriaList.map((item, idx) => (
           <div
             key={item.id}
             className={cn(
               "flex items-center gap-2 text-xs transition-colors duration-200",
+              idx === 4 ? "col-span-2" : "col-span-1",
               item.met
                 ? "text-emerald-600 font-medium"
                 : "text-slate-400 font-normal"
