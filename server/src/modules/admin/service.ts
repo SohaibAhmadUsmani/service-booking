@@ -23,6 +23,10 @@ export class AdminService {
     return this.repo.updateUser(id, { role });
   }
 
+  async deleteUser(id: string) {
+    return this.repo.deleteUser(id);
+  }
+
   async getProviders() {
     return this.repo.getProviders();
   }
@@ -78,11 +82,12 @@ export class AdminService {
   }
 
   async updateBookingStatus(id: string, status: string) {
+    const normalized = status.toLowerCase() === "no-show" ? "no_show" : status.toLowerCase();
     const valid = ["pending", "confirmed", "completed", "cancelled", "no_show"];
-    if (!valid.includes(status)) {
+    if (!valid.includes(normalized)) {
       throw new Error(`Invalid booking status: ${status}`);
     }
-    return this.repo.updateBookingStatus(id, status);
+    return this.repo.updateBookingStatus(id, normalized);
   }
 
   async getReviews() {
@@ -91,6 +96,10 @@ export class AdminService {
 
   async moderateReview(id: string, isHidden: boolean) {
     return this.repo.moderateReview(id, isHidden);
+  }
+
+  async deleteReview(id: string) {
+    return this.repo.deleteReview(id);
   }
 
   async getComplaints() {
@@ -108,7 +117,7 @@ export class AdminService {
 
     // Calculate real category distribution based on actual bookings
     const catDistribution = categories.map((c) => {
-      const matchCount = bookings.filter((b) => String(b.categoryId) === String(c._id)).length;
+      const matchCount = bookings.filter((b: any) => String(b.categoryId) === String(c._id)).length;
       return {
         name: c.name,
         count: matchCount,

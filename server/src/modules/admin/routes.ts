@@ -19,6 +19,7 @@ adminRouter.get("/overview", AdminController.getOverview);
 // User management
 adminRouter.get("/users", AdminController.getUsers);
 adminRouter.patch("/users/:id", AdminController.updateUser);
+adminRouter.delete("/users/:id", AdminController.deleteUser);
 
 // Provider management
 adminRouter.get("/providers", AdminController.getProviders);
@@ -43,6 +44,7 @@ adminRouter.patch("/bookings/:id/status", AdminController.updateBookingStatus);
 // Reviews management
 adminRouter.get("/reviews", AdminController.getReviews);
 adminRouter.patch("/reviews/:id", AdminController.moderateReview);
+adminRouter.delete("/reviews/:id", AdminController.deleteReview);
 
 // Complaints management
 adminRouter.get("/complaints", AdminController.getComplaints);

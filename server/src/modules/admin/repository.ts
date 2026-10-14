@@ -183,6 +183,12 @@ export class AdminRepository {
     return this.db.collection("users").updateOne({ _id: oid }, { $set: updates });
   }
 
+  async deleteUser(id: string) {
+    if (!this.db) throw new Error("Database connection not ready");
+    const oid = new mongoose.Types.ObjectId(id);
+    return this.db.collection("users").deleteOne({ _id: oid });
+  }
+
   async getProviders() {
     if (!this.db) throw new Error("Database connection not ready");
     const providers = await this.db.collection("providerprofiles").find().toArray();
@@ -279,19 +285,50 @@ export class AdminRepository {
         { "details.phone": { $regex: search, $options: "i" } },
       ];
     }
-    return this.db.collection("bookings").find(query).sort({ createdAt: -1 }).toArray();
+    const bookings = await this.db.collection("bookings").find(query).sort({ createdAt: -1 }).toArray();
+    return bookings.map((b: any) => ({
+      ...b,
+      paymentStatus:
+        b.paymentStatus ||
+        (b.status === "completed" || b.status === "confirmed"
+          ? "paid"
+          : b.status === "cancelled"
+          ? "refunded"
+          : b.status === "no_show"
+          ? "failed"
+          : "pending"),
+    }));
   }
 
   async updateBookingStatus(id: string, status: string) {
     if (!this.db) throw new Error("Database connection not ready");
     const oid = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
     const filter = oid ? { $or: [{ _id: oid }, { bookingId: id }] } : { bookingId: id };
-    return this.db.collection("bookings").updateOne(filter, { $set: { status, updatedAt: new Date() } });
+    const paymentStatus =
+      status === "completed" || status === "confirmed"
+        ? "paid"
+        : status === "cancelled"
+        ? "refunded"
+        : status === "no_show"
+        ? "failed"
+        : "pending";
+    return this.db.collection("bookings").updateOne(filter, {
+      $set: { status, paymentStatus, updatedAt: new Date() },
+    });
   }
 
   async getReviews() {
     if (!this.db) throw new Error("Database connection not ready");
-    return this.db.collection("reviews").find().sort({ createdAt: -1 }).toArray();
+    const reviews = await this.db.collection("reviews").find().sort({ createdAt: -1 }).toArray();
+    const users = await this.db.collection("users").find().toArray();
+    return reviews.map((r) => {
+      const u = users.find((user) => String(user._id) === String(r.customerId || r.userId));
+      return {
+        ...r,
+        userName: r.userName || (u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email : "Customer"),
+        userEmail: r.userEmail || u?.email,
+      };
+    });
   }
 
   async moderateReview(id: string, isHidden: boolean) {
@@ -300,9 +337,24 @@ export class AdminRepository {
     return this.db.collection("reviews").updateOne({ _id: oid }, { $set: { isHidden, updatedAt: new Date() } });
   }
 
+  async deleteReview(id: string) {
+    if (!this.db) throw new Error("Database connection not ready");
+    const oid = new mongoose.Types.ObjectId(id);
+    return this.db.collection("reviews").deleteOne({ _id: oid });
+  }
+
   async getComplaints() {
     if (!this.db) throw new Error("Database connection not ready");
-    return this.db.collection("complaints").find().sort({ createdAt: -1 }).toArray();
+    const complaints = await this.db.collection("complaints").find().sort({ createdAt: -1 }).toArray();
+    const users = await this.db.collection("users").find().toArray();
+    return complaints.map((c) => {
+      const u = users.find((user) => String(user._id) === String(c.customerId || c.userId));
+      return {
+        ...c,
+        userName: c.userName || (u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email : "Customer"),
+        userEmail: c.userEmail || u?.email,
+      };
+    });
   }
 
   async resolveComplaint(id: string, status: string, notes?: string) {
