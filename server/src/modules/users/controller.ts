@@ -70,3 +70,24 @@ export async function changePasswordHandler(
     next(error);
   }
 }
+
+export async function deleteAccountHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError("Authentication required.", 401);
+    }
+
+    await userService.deleteAccount(req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Your account has been deactivated and scheduled for deletion.",
+    });
+  } catch (error) {
+    next(error);
+  }
+}

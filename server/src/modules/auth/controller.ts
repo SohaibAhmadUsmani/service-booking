@@ -91,3 +91,114 @@ export async function logoutHandler(
     next(error);
   }
 }
+
+export async function forgotPasswordHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email } = req.body as { email: string };
+    const result = await authService.forgotPassword(email);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      ...(result.resetToken ? { resetToken: result.resetToken } : {}),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resetPasswordHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { token, newPassword } = req.body as { token: string; newPassword: string };
+    const result = await authService.resetPassword(token, newPassword);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getSessionsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const sessions = await authService.getUserSessions(userId);
+
+    res.status(200).json({
+      success: true,
+      data: sessions,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function revokeSessionHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+    await authService.revokeSession(userId, id);
+
+    res.status(200).json({
+      success: true,
+      message: "Session revoked successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyEmailHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { token } = req.body as { token: string };
+    const result = await authService.verifyEmail(token);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resendVerificationHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email } = req.body as { email: string };
+    const result = await authService.resendVerification(email);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      ...(result.verificationToken ? { verificationToken: result.verificationToken } : {}),
+    });
+  } catch (error) {
+    next(error);
+  }
+}

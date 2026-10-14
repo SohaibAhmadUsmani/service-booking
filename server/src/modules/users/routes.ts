@@ -3,6 +3,7 @@ import {
   getProfileHandler,
   updateProfileHandler,
   changePasswordHandler,
+  deleteAccountHandler,
 } from "./controller";
 import { requireAuth } from "../../middleware/auth";
 import { validateRequest } from "../../middleware/validate";
@@ -38,3 +39,6 @@ usersRouter.put(
   validateRequest({ body: changePasswordSchema }),
   changePasswordHandler
 );
+
+// GDPR account deactivation and deletion endpoint
+usersRouter.delete("/me", requireAuth, deleteAccountHandler);
