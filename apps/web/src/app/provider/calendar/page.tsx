@@ -1,64 +1,99 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../../lib/auth/AuthContext";
+import { ApiStatus, statusLabel, useAuthedApi } from "../../../lib/api/useAuthedApi";
 
-type Status = "Pending" | "Confirmed" | "Completed" | "Cancelled" | "No-show";
-
-type Booking = {
-  id: string;
-  customer: string;
-  service: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:mm
-  status: Status;
+type CalendarBooking = {
+  bookingId: string;
+  startTime: string;
+  endTime: string;
+  status: ApiStatus;
 };
 
-// TODO: replace with Shanza's bookings API (filtered by provider and month)
-const bookings: Booking[] = [
-  { id: "BK-1001", customer: "Ali Khan", service: "Home Cleaning", date: "2026-10-08", time: "10:00", status: "Confirmed" },
-  { id: "BK-1002", customer: "Sara Ahmed", service: "AC Repair", date: "2026-10-08", time: "14:00", status: "Pending" },
-  { id: "BK-1003", customer: "Usman Raza", service: "Pipe Leak Fix", date: "2026-10-09", time: "11:30", status: "Completed" },
-  { id: "BK-1004", customer: "Hina Malik", service: "Home Cleaning", date: "2026-10-10", time: "09:00", status: "Pending" },
-  { id: "BK-1005", customer: "Bilal Shah", service: "AC Repair", date: "2026-10-06", time: "16:00", status: "No-show" },
-  { id: "BK-1006", customer: "Ayesha Noor", service: "Pipe Leak Fix", date: "2026-10-05", time: "12:00", status: "Cancelled" },
-  { id: "BK-1007", customer: "Ali Khan", service: "AC Repair", date: "2026-10-14", time: "10:30", status: "Confirmed" },
-  { id: "BK-1008", customer: "Sara Ahmed", service: "Home Cleaning", date: "2026-10-14", time: "15:00", status: "Confirmed" },
-  { id: "BK-1009", customer: "Usman Raza", service: "Home Cleaning", date: "2026-10-21", time: "09:30", status: "Pending" },
-];
+type CalendarDay = {
+  date: string;
+  working: { start: string; end: string; breaks?: { start: string; end: string }[] } | null;
+  bookings: CalendarBooking[];
+};
 
-const MOCK_TODAY = "2026-10-09"; // replace with the real current date once real data is connected
+type CalendarData = { days?: CalendarDay[] };
 
-const chip: Record<Status, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Confirmed: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Cancelled: "bg-gray-200 text-gray-600 line-through",
-  "No-show": "bg-red-100 text-red-700",
+const chip: Record<ApiStatus, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  completed: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-200 text-gray-600 line-through",
+  no_show: "bg-red-100 text-red-700",
 };
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function key(y: number, m: number, d: number) {
-  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const pad = (n: number) => String(n).padStart(2, "0");
+const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+function todayString() {
+  const n = new Date();
+  return ymd(n.getFullYear(), n.getMonth(), n.getDate());
 }
 
 export default function CalendarPage() {
-  const [cursor, setCursor] = useState({ year: 2026, month: 9 }); // October 2026 (mock data month)
-  const [selected, setSelected] = useState<string | null>(MOCK_TODAY);
+  const request = useAuthedApi();
+  const { user } = useAuth();
+  const info = (user ?? {}) as Record<string, unknown>;
+  const providerId = String(info.id ?? info._id ?? "");
 
-  const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
+  const today = todayString();
+  const [cursor, setCursor] = useState(() => {
+    const n = new Date();
+    return { year: n.getFullYear(), month: n.getMonth() };
   });
+  const [selected, setSelected] = useState<string | null>(today);
+  const [days, setDays] = useState<CalendarDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    if (!providerId) return;
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError("");
+      const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate();
+      const from = ymd(cursor.year, cursor.month, 1);
+      const to = ymd(cursor.year, cursor.month, daysInMonth);
+      try {
+        const json = await request<Record<string, unknown>>(
+          `/api/bookings/calendar?from=${from}&to=${to}&providerId=${encodeURIComponent(providerId)}${
+            showCancelled ? "&includeCancelled=true" : ""
+          }`
+        );
+        const data = ((json.data as CalendarData | undefined) ?? (json as CalendarData)) as CalendarData;
+        if (!cancelled) setDays(data.days ?? []);
+      } catch (e) {
+        if (!cancelled) {
+          setDays([]);
+          setError(e instanceof Error ? e.message : "Could not load the calendar");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [providerId, request, cursor, showCancelled, reloadKey]);
 
   const byDate = useMemo(() => {
-    const map: Record<string, Booking[]> = {};
-    bookings.forEach((b) => {
-      (map[b.date] ??= []).push(b);
+    const map: Record<string, CalendarDay> = {};
+    days.forEach((d) => {
+      map[d.date] = d;
     });
-    Object.values(map).forEach((list) => list.sort((a, b) => a.time.localeCompare(b.time)));
     return map;
-  }, []);
+  }, [days]);
 
   const cells = useMemo(() => {
     const first = new Date(cursor.year, cursor.month, 1);
@@ -70,6 +105,11 @@ export default function CalendarPage() {
     return list;
   }, [cursor]);
 
+  const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   function move(delta: number) {
     setCursor((c) => {
       const d = new Date(c.year, c.month + delta, 1);
@@ -79,17 +119,33 @@ export default function CalendarPage() {
   }
 
   function goToday() {
-    setCursor({ year: 2026, month: 9 });
-    setSelected(MOCK_TODAY);
+    const n = new Date();
+    setCursor({ year: n.getFullYear(), month: n.getMonth() });
+    setSelected(todayString());
   }
 
-  const dayBookings = selected ? byDate[selected] ?? [] : [];
+  const selectedDay = selected ? byDate[selected] : undefined;
+  const sortedBookings = selectedDay
+    ? [...selectedDay.bookings].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    : [];
+
+  if (!providerId) {
+    return <div className="text-sm text-gray-500">Loading your account...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Calendar</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={showCancelled}
+              onChange={(e) => setShowCancelled(e.target.checked)}
+            />
+            Show cancelled
+          </label>
           <button onClick={() => move(-1)} className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50">
             Prev
           </button>
@@ -99,13 +155,26 @@ export default function CalendarPage() {
           <button onClick={() => move(1)} className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50">
             Next
           </button>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50"
+          >
+            Refresh
+          </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="overflow-x-auto rounded-xl border bg-white lg:col-span-2">
           <div className="min-w-[640px]">
-            <h2 className="border-b px-5 py-3 font-medium">{monthLabel}</h2>
+            <div className="flex items-center justify-between border-b px-5 py-3">
+              <h2 className="font-medium">{monthLabel}</h2>
+              {loading && <span className="text-xs text-gray-500">Loading...</span>}
+            </div>
 
             <div className="grid grid-cols-7 border-b text-center text-xs text-gray-500">
               {weekdays.map((w) => (
@@ -120,29 +189,34 @@ export default function CalendarPage() {
                 if (d === null) {
                   return <div key={i} className="h-28 border-b border-r bg-gray-50" />;
                 }
-                const k = key(cursor.year, cursor.month, d);
-                const list = byDate[k] ?? [];
-                const isToday = k === MOCK_TODAY;
+                const k = ymd(cursor.year, cursor.month, d);
+                const day = byDate[k];
+                const list = day?.bookings ?? [];
+                const isOff = !!day && day.working === null;
+                const isToday = k === today;
                 const isSelected = k === selected;
                 return (
                   <button
                     key={i}
                     onClick={() => setSelected(k)}
                     className={`h-28 border-b border-r p-1 text-left align-top hover:bg-indigo-50 ${
-                      isSelected ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : ""
-                    }`}
+                      isOff ? "bg-gray-50" : ""
+                    } ${isSelected ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : ""}`}
                   >
-                    <span
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                        isToday ? "bg-indigo-600 font-semibold text-white" : "text-gray-700"
-                      }`}
-                    >
-                      {d}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
+                          isToday ? "bg-indigo-600 font-semibold text-white" : "text-gray-700"
+                        }`}
+                      >
+                        {d}
+                      </span>
+                      {isOff && <span className="pr-1 text-[10px] text-gray-400">Off</span>}
+                    </div>
                     <div className="mt-1 space-y-1">
                       {list.slice(0, 2).map((b) => (
-                        <div key={b.id} className={`truncate rounded px-1 text-[11px] ${chip[b.status]}`}>
-                          {b.time} {b.customer}
+                        <div key={b.bookingId} className={`truncate rounded px-1 text-[11px] ${chip[b.status]}`}>
+                          {b.startTime} {b.bookingId}
                         </div>
                       ))}
                       {list.length > 2 && (
@@ -157,28 +231,37 @@ export default function CalendarPage() {
         </div>
 
         <div className="rounded-xl border bg-white">
-          <h2 className="border-b px-5 py-3 font-medium">
-            {selected ? `Bookings on ${selected}` : "Select a day"}
-          </h2>
+          <h2 className="border-b px-5 py-3 font-medium">{selected ? `Bookings on ${selected}` : "Select a day"}</h2>
           <div className="space-y-3 p-5">
-            {selected && dayBookings.length === 0 && (
+            {!selected && <p className="text-sm text-gray-500">Click a day to see its bookings.</p>}
+
+            {selected && selectedDay && (
+              <p className="text-sm text-gray-600">
+                {selectedDay.working
+                  ? `Working ${selectedDay.working.start} to ${selectedDay.working.end}${
+                      selectedDay.working.breaks && selectedDay.working.breaks.length > 0
+                        ? ` (break ${selectedDay.working.breaks.map((b) => `${b.start}-${b.end}`).join(", ")})`
+                        : ""
+                    }`
+                  : "Day off"}
+              </p>
+            )}
+
+            {selected && sortedBookings.length === 0 && (
               <p className="text-sm text-gray-500">No bookings on this day.</p>
             )}
-            {!selected && (
-              <p className="text-sm text-gray-500">Click a day to see its bookings.</p>
-            )}
-            {dayBookings.map((b) => (
-              <div key={b.id} className="rounded-lg border p-3 text-sm">
+
+            {sortedBookings.map((b) => (
+              <div key={b.bookingId} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{b.time}</span>
+                  <span className="font-medium">
+                    {b.startTime} - {b.endTime}
+                  </span>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${chip[b.status]}`}>
-                    {b.status}
+                    {statusLabel[b.status]}
                   </span>
                 </div>
-                <p className="mt-1">{b.customer}</p>
-                <p className="text-xs text-gray-500">
-                  {b.service} · {b.id}
-                </p>
+                <p className="mt-1 text-xs text-gray-500">{b.bookingId}</p>
               </div>
             ))}
           </div>
