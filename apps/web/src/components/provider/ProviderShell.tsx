@@ -23,13 +23,8 @@ export default function ProviderShell({ children }: { children: React.ReactNode 
   const { user, logout } = useAuth();
 
   // Field names read defensively until the UserProfile type is confirmed
-  const info = (user ?? {}) as Record<string, unknown>;
-  const displayName =
-    (info.name as string) ||
-    [info.firstName, info.lastName].filter(Boolean).join(" ") ||
-    (info.fullName as string) ||
-    (info.email as string) ||
-    "Provider";
+    const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Provider";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
