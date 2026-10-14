@@ -1,51 +1,63 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import ServiceForm, { Service } from "../../../components/provider/services/ServiceForm";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import ServiceForm, { Category, Service, ServiceInput } from "../../../components/provider/services/ServiceForm";
 import { useAuthedApi } from "../../../lib/api/useAuthedApi";
 
-type ApiService = Service & { isActive: boolean };
-
-function pickList(json: unknown): ApiService[] {
+function pickList<T>(json: unknown): T[] {
   const root = (json ?? {}) as { data?: unknown };
   const list = Array.isArray(json) ? json : Array.isArray(root.data) ? root.data : [];
-  return list as ApiService[];
+  return list as T[];
 }
 
-function pickOne(json: unknown): ApiService | null {
+function pickOne(json: unknown): Service | null {
   const root = (json ?? {}) as { data?: unknown };
-  const item = (root.data ?? json) as Partial<ApiService> | null;
-  return item && typeof item.id === "string" ? (item as ApiService) : null;
+  const item = (root.data ?? json) as Partial<Service> | null;
+  return item && typeof item.id === "string" ? (item as Service) : null;
 }
 
 export default function ServicesPage() {
   const request = useAuthedApi();
 
-  const [services, setServices] = useState<ApiService[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<ApiService | null>(null);
+  const [editing, setEditing] = useState<Service | null>(null);
   const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    const problems: string[] = [];
+
     try {
-      const json = await request<unknown>("/api/services/mine");
-      setServices(pickList(json));
+      setServices(pickList<Service>(await request<unknown>("/api/services/mine")));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load your services");
-    } finally {
-      setLoading(false);
+      problems.push(e instanceof Error ? e.message : "Could not load your services");
     }
+
+    try {
+      setCategories(pickList<Category>(await request<unknown>("/api/services/categories")));
+    } catch (e) {
+      problems.push(`Categories: ${e instanceof Error ? e.message : "could not load"}`);
+    }
+
+    setError(problems.join(" · "));
+    setLoading(false);
   }, [request]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const categoryName = useMemo(() => {
+    const map = new Map(categories.map((c) => [c.id, c.name]));
+    return (id?: string) => (id ? map.get(id) ?? "Unknown" : "—");
+  }, [categories]);
 
   function closeForm() {
     setEditing(null);
@@ -53,19 +65,14 @@ export default function ServicesPage() {
     setFormError("");
   }
 
-  async function handleSave(data: Omit<Service, "id">) {
+  async function handleSave(data: ServiceInput) {
     setSaving(true);
     setFormError("");
     try {
       if (editing) {
-        const json = await request<unknown>(`/api/services/${editing.id}`, {
-          method: "PATCH",
-          body: data,
-        });
+        const json = await request<unknown>(`/api/services/${editing.id}`, { method: "PATCH", body: data });
         const updated = pickOne(json);
-        setServices((list) =>
-          list.map((s) => (s.id === editing.id ? { ...s, ...(updated ?? data) } : s))
-        );
+        setServices((list) => list.map((s) => (s.id === editing.id ? { ...s, ...(updated ?? data) } : s)));
       } else {
         const json = await request<unknown>("/api/services", { method: "POST", body: data });
         const created = pickOne(json);
@@ -81,7 +88,7 @@ export default function ServicesPage() {
     }
   }
 
-  async function setActive(s: ApiService, active: boolean) {
+  async function setActive(s: Service, active: boolean) {
     if (!active && !window.confirm(`Deactivate "${s.name}"? Customers will no longer be able to book it.`)) {
       return;
     }
@@ -141,6 +148,7 @@ export default function ServicesPage() {
           <ServiceForm
             key={editing?.id ?? "new"}
             initial={editing ?? undefined}
+            categories={categories}
             onSave={handleSave}
             onCancel={closeForm}
           />
@@ -171,9 +179,9 @@ export default function ServicesPage() {
               services.map((s) => (
                 <tr key={s.id} className={`border-t ${s.isActive ? "" : "bg-gray-50 text-gray-400"}`}>
                   <td className="px-5 py-3 font-medium">{s.name}</td>
-                  <td className="px-5 py-3">{s.category}</td>
+                  <td className="px-5 py-3">{categoryName(s.categoryId)}</td>
                   <td className="px-5 py-3">{Number(s.price).toLocaleString()}</td>
-                  <td className="px-5 py-3">{s.durationMin} min</td>
+                  <td className="px-5 py-3">{s.duration ? `${s.duration} min` : "—"}</td>
                   <td className="px-5 py-3">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-medium ${
