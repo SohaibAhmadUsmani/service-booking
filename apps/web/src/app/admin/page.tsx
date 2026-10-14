@@ -338,6 +338,34 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleToggleReviewModeration = async (reviewId: string, currentHidden: boolean) => {
+    try {
+      await fetch(`${API_BASE}/api/admin/reviews/${reviewId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHidden: !currentHidden }),
+      });
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      alert("Error updating review moderation: " + err.message);
+    }
+  };
+
+  const handleResolveComplaint = async (complaintId: string) => {
+    const notes = prompt("Enter resolution notes / settlement details:", "Complaint verified and resolved by Admin.");
+    if (notes === null) return;
+    try {
+      await fetch(`${API_BASE}/api/admin/complaints/${complaintId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "resolved", notes }),
+      });
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      alert("Error resolving complaint: " + err.message);
+    }
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -1088,6 +1116,7 @@ export default function AdminDashboardPage() {
                     <option value="confirmed">Confirmed</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
+                    <option value="no_show">No-show</option>
                   </select>
                 </div>
 
@@ -1101,7 +1130,7 @@ export default function AdminDashboardPage() {
                       <th className="px-5 py-3.5">Booking Code</th>
                       <th className="px-5 py-3.5">Date & Slot</th>
                       <th className="px-5 py-3.5">Customer</th>
-                      <th className="px-5 py-3.5">Price</th>
+                      <th className="px-5 py-3.5">Price & Mock Pay</th>
                       <th className="px-5 py-3.5">Status</th>
                       <th className="px-5 py-3.5 text-right">Moderation</th>
                     </tr>
@@ -1126,17 +1155,32 @@ export default function AdminDashboardPage() {
                             <span className="text-[11px] text-slate-400">{b.details?.phone || ""}</span>
                           </td>
                           <td className="px-5 py-3.5 font-semibold text-slate-900">
-                            Rs. {Number(b.price || 0).toLocaleString()}
+                            <div>Rs. {Number(b.price || 0).toLocaleString()}</div>
+                            <span className={`inline-block px-1.5 py-0.5 mt-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              b.paymentStatus === "paid"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : b.paymentStatus === "refunded"
+                                ? "bg-purple-100 text-purple-700"
+                                : b.paymentStatus === "failed"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}>
+                              Mock Pay: {b.paymentStatus || "PENDING"}
+                            </span>
                           </td>
                           <td className="px-5 py-3.5">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               b.status === "confirmed"
                                 ? "bg-emerald-100 text-emerald-700"
+                                : b.status === "completed"
+                                ? "bg-blue-100 text-blue-700"
                                 : b.status === "pending"
                                 ? "bg-amber-100 text-amber-700"
-                                : "bg-slate-100 text-slate-600"
+                                : b.status === "no_show"
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-rose-100 text-rose-700"
                             }`}>
-                              {b.status || "PENDING"}
+                              {b.status === "no_show" ? "NO-SHOW" : (b.status || "PENDING").toUpperCase()}
                             </span>
                           </td>
                           <td className="px-5 py-3.5 text-right">
@@ -1149,6 +1193,7 @@ export default function AdminDashboardPage() {
                               <option value="confirmed">Confirmed</option>
                               <option value="completed">Completed</option>
                               <option value="cancelled">Cancelled</option>
+                              <option value="no_show">No-show</option>
                             </select>
                           </td>
                         </tr>
@@ -1165,29 +1210,78 @@ export default function AdminDashboardPage() {
             <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">Customer Reviews</h2>
-                  <p className="text-xs text-slate-500">Audit ratings submitted by customers</p>
+                  <h2 className="text-sm font-bold text-slate-900">Customer Reviews & Ratings</h2>
+                  <p className="text-xs text-slate-500">Audit ratings submitted by customers & moderate public visibility</p>
                 </div>
                 <span className="text-xs text-slate-500 font-medium">{reviews.length} review(s)</span>
               </div>
 
-              <div className="p-8 text-center">
-                {reviews.length === 0 ? (
-                  <div className="max-w-sm mx-auto">
-                    <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-slate-700">No reviews submitted yet</p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Customer ratings and reviews will appear here once bookings are completed and rated.
-                    </p>
-                  </div>
-                ) : (
-                  reviews.map((r) => (
-                    <div key={r._id} className="p-3 border-b text-left">
-                      <p className="font-bold text-xs">{r.userName}</p>
-                      <p className="text-xs text-slate-600">{r.comment}</p>
-                    </div>
-                  ))
-                )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                    <tr>
+                      <th className="px-5 py-3.5">Customer</th>
+                      <th className="px-5 py-3.5">Booking / Ref</th>
+                      <th className="px-5 py-3.5">Rating</th>
+                      <th className="px-5 py-3.5">Review Comment</th>
+                      <th className="px-5 py-3.5">Visibility Status</th>
+                      <th className="px-5 py-3.5 text-right">Moderation Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {reviews.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-10 text-slate-400">
+                          <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-xs font-semibold text-slate-700">No reviews submitted yet</p>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Customer ratings and reviews will appear here once bookings are completed.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      reviews.map((r) => (
+                        <tr key={r._id} className="hover:bg-slate-50/60 transition">
+                          <td className="px-5 py-3.5 font-semibold text-slate-900">
+                            <div>{r.userName || "Customer"}</div>
+                            <span className="text-[11px] text-slate-400">{r.userEmail || ""}</span>
+                          </td>
+                          <td className="px-5 py-3.5 font-mono text-slate-700">
+                            {r.bookingId || "General"}
+                          </td>
+                          <td className="px-5 py-3.5 text-amber-500 font-bold whitespace-nowrap">
+                            {"★".repeat(r.rating || 5)}{"☆".repeat(Math.max(0, 5 - (r.rating || 5)))} ({r.rating ?? 5}/5)
+                          </td>
+                          <td className="px-5 py-3.5 text-slate-600 max-w-xs">
+                            <p className="line-clamp-2">{r.comment || "No comment provided."}</p>
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                              {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ""}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              r.isHidden ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                            }`}>
+                              {r.isHidden ? "Hidden from Public" : "Publicly Visible"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <button
+                              onClick={() => handleToggleReviewModeration(r._id, r.isHidden)}
+                              className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition ${
+                                r.isHidden
+                                  ? "border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100"
+                                  : "border-amber-200 text-amber-700 bg-amber-50/50 hover:bg-amber-100"
+                              }`}
+                            >
+                              {r.isHidden ? "Publish Review" : "Hide Review"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1198,28 +1292,83 @@ export default function AdminDashboardPage() {
               <div className="p-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/50">
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">Customer Complaints & Disputes</h2>
-                  <p className="text-xs text-slate-500">Service quality and refund dispute tickets</p>
+                  <p className="text-xs text-slate-500">Service quality disputes, delay escalations & resolution</p>
                 </div>
                 <span className="text-xs text-slate-500 font-medium">{complaints.length} complaint(s)</span>
               </div>
 
-              <div className="p-8 text-center">
-                {complaints.length === 0 ? (
-                  <div className="max-w-sm mx-auto">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-slate-700">No active complaints</p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Customer support tickets and escalated complaints will appear here when submitted.
-                    </p>
-                  </div>
-                ) : (
-                  complaints.map((c) => (
-                    <div key={c._id} className="p-3 border-b text-left">
-                      <p className="font-bold text-xs">{c.userName}</p>
-                      <p className="text-xs text-slate-600">{c.reason}</p>
-                    </div>
-                  ))
-                )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                    <tr>
+                      <th className="px-5 py-3.5">Complainant</th>
+                      <th className="px-5 py-3.5">Booking</th>
+                      <th className="px-5 py-3.5">Issue Reason</th>
+                      <th className="px-5 py-3.5">Status</th>
+                      <th className="px-5 py-3.5">Resolution Notes</th>
+                      <th className="px-5 py-3.5 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {complaints.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-10 text-slate-400">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                          <p className="text-xs font-semibold text-slate-700">No active complaints</p>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Customer support tickets and escalated complaints will appear here when submitted.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      complaints.map((c) => (
+                        <tr key={c._id} className="hover:bg-slate-50/60 transition">
+                          <td className="px-5 py-3.5 font-semibold text-slate-900">
+                            <div>{c.userName || "Customer"}</div>
+                            <span className="text-[11px] text-slate-400">{c.userEmail || ""}</span>
+                          </td>
+                          <td className="px-5 py-3.5 font-mono text-slate-700">
+                            {c.bookingId || "General"}
+                          </td>
+                          <td className="px-5 py-3.5 text-slate-800 max-w-xs">
+                            <p className="font-semibold text-rose-700">{c.reason}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{c.description}</p>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              c.status === "resolved"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : c.status === "under_investigation"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-rose-100 text-rose-700"
+                            }`}>
+                              {c.status ? c.status.toUpperCase() : "OPEN"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-slate-600 max-w-xs">
+                            {c.resolutionNotes ? (
+                              <p className="text-[11px] text-emerald-700 font-medium">✓ {c.resolutionNotes}</p>
+                            ) : (
+                              <span className="text-slate-400 italic">Pending investigation</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            {c.status !== "resolved" ? (
+                              <button
+                                onClick={() => handleResolveComplaint(c._id)}
+                                className="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+                              >
+                                Resolve Ticket
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-medium">Closed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
