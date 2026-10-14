@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, "Choose a valid category");
+
 const shape = {
   name: z.string().trim().min(3, "Name must be at least 3 characters").max(120),
-  category: z.string().trim().min(1, "Category is required").max(60),
+  categoryId: objectId,
   price: z.number({ invalid_type_error: "Price must be a number" }).positive("Price must be greater than 0").max(10_000_000),
-  durationMin: z
+  duration: z
     .number({ invalid_type_error: "Duration must be a number" })
     .int("Duration must be whole minutes")
     .min(15, "Minimum duration is 15 minutes")

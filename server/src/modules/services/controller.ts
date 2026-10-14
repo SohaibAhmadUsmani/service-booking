@@ -1,24 +1,36 @@
 import type { NextFunction, Request, Response } from "express";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { ServiceModel } from "./model";
 
-type AuthedRequest = Request & {
-  user?: { userId?: string; id?: string; _id?: string; role?: string };
-};
-
 function getUser(req: Request): { id: string; role: string } | null {
-  const u = (req as AuthedRequest).user;
-  const id = u?.userId ?? u?.id ?? u?._id;
-  if (!u || !id) return null;
-  return { id: String(id), role: String(u.role ?? "").toLowerCase() };
+  const id = req.user?.userId;
+  if (!id) return null;
+  return { id: String(id), role: String(req.user?.role ?? "").toLowerCase() };
 }
 
-const isProviderOrAdmin = (role: string) => role === "provider" || role === "admin";
+/** Public: categories a provider can choose from (reads the shared "categories" collection) */
+export async function listCategoriesHandler(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) {
+      res.status(503).json({ error: "Database connection not ready" });
+      return;
+    }
+    const docs = await db
+      .collection("categories")
+      .find({ isActive: { $ne: false } })
+      .sort({ name: 1 })
+      .toArray();
+    res.json({ data: docs.map((c) => ({ id: String(c._id), name: c.name, icon: c.icon })) });
+  } catch (err) {
+    next(err);
+  }
+}
 
-/** Public: active services, optionally for one provider or category */
+/** Public: active services, optionally for one provider */
 export async function listServicesHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { providerId, category } = req.query;
+    const { providerId } = req.query;
     const filter: Record<string, unknown> = { isActive: true };
 
     if (providerId !== undefined) {
@@ -28,7 +40,6 @@ export async function listServicesHandler(req: Request, res: Response, next: Nex
       }
       filter.providerId = providerId;
     }
-    if (typeof category === "string" && category.trim()) filter.category = category.trim();
 
     const services = await ServiceModel.find(filter).sort({ createdAt: -1 });
     res.json({ data: services });
@@ -45,7 +56,7 @@ export async function listMyServicesHandler(req: Request, res: Response, next: N
       res.status(401).json({ error: "Login required" });
       return;
     }
-    if (!isProviderOrAdmin(user.role)) {
+    if (user.role !== "provider" && user.role !== "admin") {
       res.status(403).json({ error: "Only providers can manage services" });
       return;
     }
@@ -75,30 +86,43 @@ export async function createServiceHandler(req: Request, res: Response, next: Ne
   }
 }
 
+/** Loads a service and checks the caller may change it. Returns null after sending an error. */
+async function loadOwned(req: Request, res: Response) {
+  const user = getUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Login required" });
+    return null;
+  }
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: "Invalid service id" });
+    return null;
+  }
+  const service = await ServiceModel.findById(id).lean();
+  if (!service) {
+    res.status(404).json({ error: "Service not found" });
+    return null;
+  }
+  // Admin-seeded services have no providerId, so only an admin can change them
+  const owner = service.providerId ? String(service.providerId) : "";
+  const allowed = user.role === "admin" || (user.role === "provider" && owner === user.id);
+  if (!allowed) {
+    res.status(403).json({ error: "You can only change your own services" });
+    return null;
+  }
+  return id;
+}
+
 export async function updateServiceHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = getUser(req);
-    if (!user) {
-      res.status(401).json({ error: "Login required" });
-      return;
-    }
-    const { id } = req.params;
-    if (!Types.ObjectId.isValid(id)) {
-      res.status(400).json({ error: "Invalid service id" });
-      return;
-    }
-    const service = await ServiceModel.findById(id);
-    if (!service) {
-      res.status(404).json({ error: "Service not found" });
-      return;
-    }
-    if (!isProviderOrAdmin(user.role) || (user.role !== "admin" && String(service.providerId) !== user.id)) {
-      res.status(403).json({ error: "You can only change your own services" });
-      return;
-    }
-    Object.assign(service, req.body);
-    await service.save();
-    res.json({ data: service });
+    const id = await loadOwned(req, res);
+    if (!id) return;
+    const updated = await ServiceModel.findByIdAndUpdate(
+      id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    res.json({ data: updated });
   } catch (err) {
     next(err);
   }
@@ -107,28 +131,10 @@ export async function updateServiceHandler(req: Request, res: Response, next: Ne
 /** DELETE does not remove the record: it sets isActive to false */
 export async function deactivateServiceHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = getUser(req);
-    if (!user) {
-      res.status(401).json({ error: "Login required" });
-      return;
-    }
-    const { id } = req.params;
-    if (!Types.ObjectId.isValid(id)) {
-      res.status(400).json({ error: "Invalid service id" });
-      return;
-    }
-    const service = await ServiceModel.findById(id);
-    if (!service) {
-      res.status(404).json({ error: "Service not found" });
-      return;
-    }
-    if (!isProviderOrAdmin(user.role) || (user.role !== "admin" && String(service.providerId) !== user.id)) {
-      res.status(403).json({ error: "You can only change your own services" });
-      return;
-    }
-    service.isActive = false;
-    await service.save();
-    res.json({ data: service });
+    const id = await loadOwned(req, res);
+    if (!id) return;
+    const updated = await ServiceModel.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true });
+    res.json({ data: updated });
   } catch (err) {
     next(err);
   }
