@@ -77,7 +77,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, token, logout } = useAuth();
+
+  const authFetch = useCallback(
+    (url: string, options: RequestInit = {}) => {
+      const activeToken = token || (typeof window !== "undefined" ? localStorage.getItem("auth_token") : null);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...((options.headers as Record<string, string>) || {}),
+      };
+      if (activeToken) {
+        headers["Authorization"] = `Bearer ${activeToken}`;
+      }
+      return fetch(url, { ...options, headers });
+    },
+    [token]
+  );
 
   const [section, setSection] = useState<Section>("overview");
   const [loading, setLoading] = useState(false);
@@ -223,7 +238,7 @@ export default function AdminDashboardPage() {
     setError(null);
     try {
       if (section === "overview") {
-        const res = await fetch(`${API_BASE}/api/admin/overview`);
+        const res = await authFetch(`${API_BASE}/api/admin/overview`);
         const json = await res.json();
         if (json.status === "ok") setOverview(json.data);
       } else if (section === "users") {
@@ -231,14 +246,14 @@ export default function AdminDashboardPage() {
         if (userSearch) params.append("search", userSearch);
         if (userRoleFilter !== "all") params.append("role", userRoleFilter);
         if (userStatusFilter !== "all") params.append("status", userStatusFilter);
-        const res = await fetch(`${API_BASE}/api/admin/users?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/users?${params}`);
         const json = await res.json();
         if (json.status === "ok") setUsers(json.data);
       } else if (section === "providers") {
         const params = new URLSearchParams();
         if (providerSearch) params.append("search", providerSearch);
         if (providerStatusFilter !== "all") params.append("status", providerStatusFilter);
-        const res = await fetch(`${API_BASE}/api/admin/providers?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/providers?${params}`);
         const json = await res.json();
         if (json.status === "ok") setProviders(json.data);
       } else if (section === "services") {
@@ -246,57 +261,57 @@ export default function AdminDashboardPage() {
         if (serviceSearch) params.append("search", serviceSearch);
         if (serviceCatFilter !== "all") params.append("categoryId", serviceCatFilter);
         const [servRes, catRes] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/services?${params}`),
-          fetch(`${API_BASE}/api/admin/categories`),
+          authFetch(`${API_BASE}/api/admin/services?${params}`),
+          authFetch(`${API_BASE}/api/admin/categories`),
         ]);
         const servJson = await servRes.json();
         const catJson = await catRes.json();
         if (servJson.status === "ok") setServices(servJson.data);
         if (catJson.status === "ok") setCategories(catJson.data);
       } else if (section === "categories") {
-        const res = await fetch(`${API_BASE}/api/admin/categories`);
+        const res = await authFetch(`${API_BASE}/api/admin/categories`);
         const json = await res.json();
         if (json.status === "ok") setCategories(json.data);
       } else if (section === "bookings") {
         const params = new URLSearchParams();
         if (bookingStatusFilter !== "all") params.append("status", bookingStatusFilter);
         if (bookingSearch) params.append("search", bookingSearch);
-        const res = await fetch(`${API_BASE}/api/admin/bookings?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/bookings?${params}`);
         const json = await res.json();
         if (json.status === "ok") setBookings(json.data);
       } else if (section === "payments") {
         const params = new URLSearchParams();
         if (paymentStatusFilter !== "all") params.append("status", paymentStatusFilter);
         if (paymentSearch) params.append("search", paymentSearch);
-        const res = await fetch(`${API_BASE}/api/admin/payments?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/payments?${params}`);
         const json = await res.json();
         if (json.status === "ok") setPayments(json.data);
       } else if (section === "reviews") {
         const params = new URLSearchParams();
         if (reviewRatingFilter !== "all") params.append("rating", reviewRatingFilter);
-        const res = await fetch(`${API_BASE}/api/admin/reviews?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/reviews?${params}`);
         const json = await res.json();
         if (json.status === "ok") setReviews(json.data);
       } else if (section === "complaints") {
         const params = new URLSearchParams();
         if (complaintStatusFilter !== "all") params.append("status", complaintStatusFilter);
-        const res = await fetch(`${API_BASE}/api/admin/complaints?${params}`);
+        const res = await authFetch(`${API_BASE}/api/admin/complaints?${params}`);
         const json = await res.json();
         if (json.status === "ok") setComplaints(json.data);
       } else if (section === "broadcasts") {
-        const res = await fetch(`${API_BASE}/api/admin/notifications/history`);
+        const res = await authFetch(`${API_BASE}/api/admin/notifications/history`);
         const json = await res.json();
         if (json.status === "ok") setBroadcasts(json.data);
       } else if (section === "reports") {
-        const res = await fetch(`${API_BASE}/api/admin/reports`);
+        const res = await authFetch(`${API_BASE}/api/admin/reports`);
         const json = await res.json();
         if (json.status === "ok") setReports(json.data);
       } else if (section === "logs") {
-        const res = await fetch(`${API_BASE}/api/admin/activity-logs?limit=40`);
+        const res = await authFetch(`${API_BASE}/api/admin/activity-logs?limit=40`);
         const json = await res.json();
         if (json.status === "ok") setLogs(json.data);
       } else if (section === "settings") {
-        const res = await fetch(`${API_BASE}/api/admin/settings`);
+        const res = await authFetch(`${API_BASE}/api/admin/settings`);
         const json = await res.json();
         if (json.status === "ok") setSettings(json.data);
       }
@@ -331,7 +346,7 @@ export default function AdminDashboardPage() {
   // ==========================================
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      await authFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !currentStatus }),
@@ -344,7 +359,7 @@ export default function AdminDashboardPage() {
 
   const handleChangeUserRole = async (userId: string, role: string) => {
     try {
-      await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      await authFetch(`${API_BASE}/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
@@ -360,7 +375,7 @@ export default function AdminDashboardPage() {
     if (!newEmail.trim() || !newFirstName.trim()) return;
     setModalActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users`, {
+      const res = await authFetch(`${API_BASE}/api/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -393,7 +408,7 @@ export default function AdminDashboardPage() {
     if (!resetPassModal) return;
     setModalActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users/${resetPassModal.userId}/reset-password`, {
+      const res = await authFetch(`${API_BASE}/api/admin/users/${resetPassModal.userId}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: resetPassInput }),
@@ -419,7 +434,7 @@ export default function AdminDashboardPage() {
       isDestructive: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/api/admin/users/${userId}`, { method: "DELETE" });
+          await authFetch(`${API_BASE}/api/admin/users/${userId}`, { method: "DELETE" });
           setRefreshKey((k) => k + 1);
         } catch (err: any) {
           alert("Error deleting user: " + err.message);
@@ -433,7 +448,7 @@ export default function AdminDashboardPage() {
   // ==========================================
   const handleToggleProviderVerification = async (providerId: string, currentVerified: boolean) => {
     try {
-      await fetch(`${API_BASE}/api/admin/providers/${providerId}`, {
+      await authFetch(`${API_BASE}/api/admin/providers/${providerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isVerified: !currentVerified }),
@@ -446,7 +461,7 @@ export default function AdminDashboardPage() {
 
   const handleChangeProviderStatus = async (providerId: string, status: string) => {
     try {
-      await fetch(`${API_BASE}/api/admin/providers/${providerId}`, {
+      await authFetch(`${API_BASE}/api/admin/providers/${providerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -462,7 +477,7 @@ export default function AdminDashboardPage() {
     if (!editProviderModal) return;
     setModalActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/providers/${editProviderModal._id}`, {
+      const res = await authFetch(`${API_BASE}/api/admin/providers/${editProviderModal._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -490,7 +505,7 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     if (!newServiceName.trim() || !newServicePrice) return;
     try {
-      await fetch(`${API_BASE}/api/admin/services`, {
+      await authFetch(`${API_BASE}/api/admin/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -520,7 +535,7 @@ export default function AdminDashboardPage() {
     if (!editServiceModal) return;
     setModalActionLoading(true);
     try {
-      await fetch(`${API_BASE}/api/admin/services/${editServiceModal._id}`, {
+      await authFetch(`${API_BASE}/api/admin/services/${editServiceModal._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -543,7 +558,7 @@ export default function AdminDashboardPage() {
 
   const handleToggleServiceStatus = async (serviceId: string, currentActive: boolean) => {
     try {
-      await fetch(`${API_BASE}/api/admin/services/${serviceId}`, {
+      await authFetch(`${API_BASE}/api/admin/services/${serviceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !currentActive }),
@@ -563,7 +578,7 @@ export default function AdminDashboardPage() {
       isDestructive: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/api/admin/services/${id}`, { method: "DELETE" });
+          await authFetch(`${API_BASE}/api/admin/services/${id}`, { method: "DELETE" });
           setRefreshKey((k) => k + 1);
         } catch (err: any) {
           alert("Error deleting service: " + err.message);
@@ -576,7 +591,7 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     if (!newCatName.trim()) return;
     try {
-      await fetch(`${API_BASE}/api/admin/categories`, {
+      await authFetch(`${API_BASE}/api/admin/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newCatName, description: newCatDesc, icon: newCatIcon }),
@@ -596,7 +611,7 @@ export default function AdminDashboardPage() {
     if (!editCategoryModal) return;
     setModalActionLoading(true);
     try {
-      await fetch(`${API_BASE}/api/admin/categories/${editCategoryModal._id}`, {
+      await authFetch(`${API_BASE}/api/admin/categories/${editCategoryModal._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -616,7 +631,7 @@ export default function AdminDashboardPage() {
 
   const handleToggleCategoryVisibility = async (categoryId: string, currentActive: boolean) => {
     try {
-      await fetch(`${API_BASE}/api/admin/categories/${categoryId}`, {
+      await authFetch(`${API_BASE}/api/admin/categories/${categoryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !currentActive }),
@@ -636,7 +651,7 @@ export default function AdminDashboardPage() {
       isDestructive: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/api/admin/categories/${id}`, { method: "DELETE" });
+          await authFetch(`${API_BASE}/api/admin/categories/${id}`, { method: "DELETE" });
           setRefreshKey((k) => k + 1);
         } catch (err: any) {
           alert("Error deleting category: " + err.message);
@@ -650,7 +665,7 @@ export default function AdminDashboardPage() {
   // ==========================================
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     try {
-      await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
+      await authFetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -666,7 +681,7 @@ export default function AdminDashboardPage() {
     if (!rescheduleModal) return;
     setModalActionLoading(true);
     try {
-      await fetch(`${API_BASE}/api/admin/bookings/${rescheduleModal.bookingId}`, {
+      await authFetch(`${API_BASE}/api/admin/bookings/${rescheduleModal.bookingId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -688,7 +703,7 @@ export default function AdminDashboardPage() {
 
   const handleUpdatePaymentStatus = async (paymentId: string, status: string) => {
     try {
-      await fetch(`${API_BASE}/api/admin/payments/${paymentId}/status`, {
+      await authFetch(`${API_BASE}/api/admin/payments/${paymentId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -708,7 +723,7 @@ export default function AdminDashboardPage() {
       isDestructive: false,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/api/admin/payments/${payment.id || payment._id}/refund`, {
+          await authFetch(`${API_BASE}/api/admin/payments/${payment.id || payment._id}/refund`, {
             method: "POST",
           });
           setRefreshKey((k) => k + 1);
@@ -724,7 +739,7 @@ export default function AdminDashboardPage() {
   // ==========================================
   const handleToggleReviewModeration = async (reviewId: string, currentHidden: boolean) => {
     try {
-      await fetch(`${API_BASE}/api/admin/reviews/${reviewId}`, {
+      await authFetch(`${API_BASE}/api/admin/reviews/${reviewId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isHidden: !currentHidden }),
@@ -744,7 +759,7 @@ export default function AdminDashboardPage() {
       isDestructive: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/api/admin/reviews/${reviewId}`, { method: "DELETE" });
+          await authFetch(`${API_BASE}/api/admin/reviews/${reviewId}`, { method: "DELETE" });
           setRefreshKey((k) => k + 1);
         } catch (err: any) {
           alert("Error deleting review: " + err.message);
@@ -767,7 +782,7 @@ export default function AdminDashboardPage() {
     if (!resolveModal) return;
     setModalActionLoading(true);
     try {
-      await fetch(`${API_BASE}/api/admin/complaints/${resolveModal.complaintId}`, {
+      await authFetch(`${API_BASE}/api/admin/complaints/${resolveModal.complaintId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -793,7 +808,7 @@ export default function AdminDashboardPage() {
     if (!broadcastTitle.trim() || !broadcastMsg.trim()) return;
     setModalActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/notifications/broadcast`, {
+      const res = await authFetch(`${API_BASE}/api/admin/notifications/broadcast`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -820,7 +835,7 @@ export default function AdminDashboardPage() {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetch(`${API_BASE}/api/admin/settings`, {
+      await authFetch(`${API_BASE}/api/admin/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
