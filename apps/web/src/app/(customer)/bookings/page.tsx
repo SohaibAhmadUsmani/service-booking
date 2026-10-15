@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Clock, Loader2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/AuthContext";
-import { ApiError, apiGet } from "../../../lib/api/client";
+import { ApiError, apiGet, apiPatch } from "../../../lib/api/client";
 
 type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
 type Filter = "upcoming" | "history" | "all";
@@ -19,7 +19,11 @@ interface Booking {
   endTime: string;
   price: number;
   status: BookingStatus;
-  details?: { name?: string; phone?: string; notes?: string };
+}
+
+interface Slot {
+  start: string;
+  end: string;
 }
 
 const STATUS_META: Record<BookingStatus, { label: string; chip: string }> = {
@@ -37,6 +41,10 @@ function formatDate(date: string) {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
+function todayString() {
+  return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 export default function CustomerBookingsPage() {
   const { user, isAuthenticated, isLoading: authLoading, refreshSession } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -44,25 +52,35 @@ export default function CustomerBookingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("upcoming");
 
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [chosen, setChosen] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
+
+  async function call<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401 && (await refreshSession())) return fn();
+      throw err;
+    }
+  }
+
+  function messageOf(err: unknown, fallback: string) {
+    return err instanceof ApiError ? err.message : fallback;
+  }
+
   async function load() {
     if (!user) return;
-    const path = `/api/bookings?customerId=${user.id}`;
     setLoading(true);
     setError(null);
     try {
-      let data: Booking[];
-      try {
-        data = await apiGet<Booking[]>(path);
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401 && (await refreshSession())) {
-          data = await apiGet<Booking[]>(path);
-        } else {
-          throw err;
-        }
-      }
-      setBookings(data);
+      setBookings(await call(() => apiGet<Booking[]>(`/api/bookings?customerId=${user.id}`)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load your bookings.");
+      setError(messageOf(err, "Could not load your bookings."));
     } finally {
       setLoading(false);
     }
@@ -72,6 +90,62 @@ export default function CustomerBookingsPage() {
     if (!authLoading && isAuthenticated) void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, user?.id]);
+
+  async function cancelBooking(b: Booking) {
+    if (!window.confirm(`Cancel your booking on ${formatDate(b.date)} at ${b.startTime}?`)) return;
+    setBusyId(b._id);
+    setActionError(null);
+    try {
+      await call(() => apiPatch(`/api/bookings/${b._id}/cancel`));
+      await load();
+    } catch (err) {
+      setActionError({ id: b._id, message: messageOf(err, "Could not cancel this booking.") });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function openReschedule(b: Booking) {
+    setReschedulingId(b._id);
+    setNewDate("");
+    setSlots([]);
+    setChosen("");
+    setActionError(null);
+  }
+
+  async function onDateChange(b: Booking, date: string) {
+    setNewDate(date);
+    setChosen("");
+    setSlots([]);
+    setActionError(null);
+    if (!date) return;
+    setSlotsLoading(true);
+    try {
+      const data = await call(() =>
+        apiGet<{ date: string; slots: Slot[] }>(`/api/availability/${b.providerId}/slots?date=${date}`)
+      );
+      setSlots(data.slots);
+    } catch (err) {
+      setActionError({ id: b._id, message: messageOf(err, "Could not load available times.") });
+    } finally {
+      setSlotsLoading(false);
+    }
+  }
+
+  async function confirmReschedule(b: Booking) {
+    if (!newDate || !chosen) return;
+    setBusyId(b._id);
+    setActionError(null);
+    try {
+      await call(() => apiPatch(`/api/bookings/${b._id}/reschedule`, { date: newDate, startTime: chosen }));
+      setReschedulingId(null);
+      await load();
+    } catch (err) {
+      setActionError({ id: b._id, message: messageOf(err, "Could not reschedule this booking.") });
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const upcoming = bookings
     .filter((b) => ACTIVE.includes(b.status))
@@ -130,9 +204,7 @@ export default function CustomerBookingsPage() {
       </div>
 
       {error && (
-        <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-          {error}
-        </div>
+        <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>
       )}
 
       {loading ? (
@@ -146,29 +218,102 @@ export default function CustomerBookingsPage() {
         </div>
       ) : (
         <ul className="mt-6 space-y-3">
-          {shown.map((b) => (
-            <li
-              key={b._id}
-              className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
-            >
-              <div>
-                <p className="font-semibold">{formatDate(b.date)}</p>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-                  <Clock className="h-4 w-4" />
-                  {b.startTime} - {b.endTime}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">{b.bookingId}</p>
-              </div>
-              <div className="text-right">
-                <span
-                  className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_META[b.status].chip}`}
-                >
-                  {STATUS_META[b.status].label}
-                </span>
-                <p className="mt-2 font-semibold">Rs {b.price.toLocaleString()}</p>
-              </div>
-            </li>
-          ))}
+          {shown.map((b) => {
+            const active = ACTIVE.includes(b.status);
+            const busy = busyId === b._id;
+            const open = reschedulingId === b._id;
+            return (
+              <li
+                key={b._id}
+                className="rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold">{formatDate(b.date)}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                      <Clock className="h-4 w-4" />
+                      {b.startTime} - {b.endTime}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">{b.bookingId}</p>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_META[b.status].chip}`}
+                    >
+                      {STATUS_META[b.status].label}
+                    </span>
+                    <p className="mt-2 font-semibold">Rs {b.price.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {active && (
+                  <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3 dark:border-neutral-800">
+                    <button
+                      onClick={() => (open ? setReschedulingId(null) : openReschedule(b))}
+                      disabled={busy}
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                    >
+                      {open ? "Close" : "Reschedule"}
+                    </button>
+                    <button
+                      onClick={() => cancelBooking(b)}
+                      disabled={busy}
+                      className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      {busy && !open ? "Cancelling..." : "Cancel booking"}
+                    </button>
+                  </div>
+                )}
+
+                {open && (
+                  <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-neutral-900">
+                    <label className="text-sm font-medium">Pick a new date</label>
+                    <input
+                      type="date"
+                      min={todayString()}
+                      value={newDate}
+                      onChange={(e) => onDateChange(b, e.target.value)}
+                      className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                    />
+                    {slotsLoading && <Loader2 className="mt-3 h-5 w-5 animate-spin text-slate-400" />}
+                    {newDate && !slotsLoading && slots.length === 0 && (
+                      <p className="mt-3 text-sm text-slate-500">No free times on this day. Try another date.</p>
+                    )}
+                    {slots.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {slots.map((s) => (
+                          <button
+                            key={s.start}
+                            onClick={() => setChosen(s.start)}
+                            className={`rounded-lg border px-3 py-1.5 text-sm ${
+                              chosen === s.start
+                                ? "border-indigo-500 bg-indigo-500 text-white"
+                                : "border-slate-300 hover:border-indigo-400"
+                            }`}
+                          >
+                            {s.start}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => confirmReschedule(b)}
+                      disabled={!newDate || !chosen || busy}
+                      className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {busy ? "Saving..." : "Confirm new time"}
+                    </button>
+                  </div>
+                )}
+
+                {actionError?.id === b._id && (
+                  <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">
+                    {actionError.message}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>
