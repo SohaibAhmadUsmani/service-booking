@@ -2,6 +2,8 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import CatalogNav from "../../components/catalog/CatalogNav";
+import styles from "../../components/catalog/catalog.module.css";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/AuthContext";
@@ -121,30 +123,30 @@ function BookingFlow() {
 
   if (authLoading) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-      </main>
+      </main></div>
     );
   }
 
   if (!validLink) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="text-2xl font-bold">Book a service</h1>
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+        <h1 className={styles.pageTitle}>Book a service</h1>
         <p className="mt-2 text-slate-500">
           Choose a service first.{" "}
           <Link href="/search" className="text-indigo-600 underline">
             Browse services
           </Link>
         </p>
-      </main>
+      </main></div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="text-2xl font-bold">Book a service</h1>
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+        <h1 className={styles.pageTitle}>Book a service</h1>
         <p className="mt-2 text-slate-500">
           Please{" "}
           <Link href="/login" className="text-indigo-600 underline">
@@ -152,16 +154,16 @@ function BookingFlow() {
           </Link>{" "}
           to book {serviceName}.
         </p>
-      </main>
+      </main></div>
     );
   }
 
   if (created) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
         <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center text-emerald-900">
           <CheckCircle2 className="h-10 w-10" />
-          <h1 className="text-2xl font-bold">Booking requested</h1>
+          <h1 className={styles.pageTitle}>Booking requested</h1>
           <p>
             {formatDate(created.date)} at {created.startTime} - {created.endTime}
           </p>
@@ -170,7 +172,7 @@ function BookingFlow() {
             View my bookings
           </Link>
         </div>
-      </main>
+      </main></div>
     );
   }
 
@@ -178,10 +180,10 @@ function BookingFlow() {
   const detailsOk = name.trim().length > 1 && phone.trim().length >= 7;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Book a service</h1>
+    <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <h1 className={styles.pageTitle}>Book a service</h1>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
         <p className="font-semibold">{serviceName}</p>
         {providerName && <p className="text-sm text-slate-500">with {providerName}</p>}
         <p className="mt-1 font-semibold">Rs {price.toLocaleString()}</p>
@@ -327,7 +329,7 @@ function BookingFlow() {
           </div>
         </section>
       )}
-    </main>
+    </main></div>
   );
 }
 

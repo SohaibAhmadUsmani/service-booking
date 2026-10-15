@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import CatalogNav from "../../components/catalog/CatalogNav";
+import styles from "../../components/catalog/catalog.module.css";
 import { CalendarClock, Clock, Loader2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import { ApiError, apiGet, apiPatch } from "../../../lib/api/client";
@@ -161,16 +163,16 @@ export default function CustomerBookingsPage() {
 
   if (authLoading) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-      </main>
+      </main></div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-2xl font-bold">My bookings</h1>
+      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+        <h1 className={styles.pageTitle}>My bookings</h1>
         <p className="mt-2 text-slate-500">
           Please{" "}
           <Link href="/login" className="text-indigo-600 underline">
@@ -178,16 +180,16 @@ export default function CustomerBookingsPage() {
           </Link>{" "}
           to see your bookings.
         </p>
-      </main>
+      </main></div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">My bookings</h1>
+    <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <h1 className={styles.pageTitle}>My bookings</h1>
       <p className="mt-1 text-sm text-slate-500">Your appointments and booking history.</p>
 
-      <div className="mt-6 flex gap-2 border-b border-slate-200 dark:border-neutral-800">
+      <div className="mt-6 flex gap-2 border-b border-slate-200">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -225,7 +227,7 @@ export default function CustomerBookingsPage() {
             return (
               <li
                 key={b._id}
-                className="rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
+                className="rounded-xl border border-slate-200 bg-white p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -247,11 +249,11 @@ export default function CustomerBookingsPage() {
                 </div>
 
                 {active && (
-                  <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3 dark:border-neutral-800">
+                  <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
                     <button
                       onClick={() => (open ? setReschedulingId(null) : openReschedule(b))}
                       disabled={busy}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
                     >
                       {open ? "Close" : "Reschedule"}
                     </button>
@@ -266,7 +268,7 @@ export default function CustomerBookingsPage() {
                 )}
 
                 {open && (
-                  <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-neutral-900">
+                  <div className="mt-4 rounded-lg bg-slate-50 p-3">
                     <label className="text-sm font-medium">Pick a new date</label>
                     <input
                       type="date"
@@ -316,6 +318,6 @@ export default function CustomerBookingsPage() {
           })}
         </ul>
       )}
-    </main>
+    </main></div>
   );
 }
