@@ -5,6 +5,7 @@ export interface IRefreshTokenDocument extends Document {
   tokenHash: string;
   familyId: string;
   deviceInfo?: string;
+  deviceFingerprint?: string | null;
   ipAddress?: string | null;
   isRevoked: boolean;
   expiresAt: Date;
@@ -36,6 +37,10 @@ const RefreshTokenSchema = new Schema<IRefreshTokenDocument>(
     deviceInfo: {
       type: String,
       default: "Unknown Device",
+    },
+    deviceFingerprint: {
+      type: String,
+      default: null,
     },
     ipAddress: {
       type: String,
@@ -70,6 +75,10 @@ const RefreshTokenSchema = new Schema<IRefreshTokenDocument>(
 
 // TTL index to automatically purge expired sessions from MongoDB
 RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Composite indexes for fast session querying and revocation
+RefreshTokenSchema.index({ userId: 1, isRevoked: 1, expiresAt: 1 });
+RefreshTokenSchema.index({ familyId: 1, isRevoked: 1 });
 
 export const RefreshTokenModel: Model<IRefreshTokenDocument> =
   model<IRefreshTokenDocument>("RefreshToken", RefreshTokenSchema);

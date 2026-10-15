@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { UserRole } from "@service-booking/shared";
 
 const navLinks = [
   { href: "#services", label: "Services" },
@@ -16,6 +18,14 @@ const navLinks = [
 
 export function PublicHeader() {
   const [open, setOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const dashboardHref =
+    user?.role === UserRole.Admin
+      ? "/admin"
+      : user?.role === UserRole.Provider
+      ? "/provider"
+      : "/profile";
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-brand-dark/80 backdrop-blur-xl">
@@ -40,12 +50,33 @@ export function PublicHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" className="text-slate-200 hover:bg-white/5 hover:text-white" asChild>
-            <Link href="/login">Log in</Link>
-          </Button>
-          <Button className="bg-indigo-500 hover:bg-indigo-400" asChild>
-            <Link href="/register">Get started</Link>
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <Button variant="ghost" className="text-slate-200 hover:bg-white/5 hover:text-white gap-2" asChild>
+                <Link href={dashboardHref}>
+                  <User className="w-4 h-4 text-indigo-400" />
+                  <span>{user?.firstName ? `Hi, ${user.firstName}` : "Dashboard"}</span>
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 gap-1.5"
+                onClick={() => logout()}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign out</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" className="text-slate-200 hover:bg-white/5 hover:text-white" asChild>
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button className="bg-indigo-500 hover:bg-indigo-400" asChild>
+                <Link href="/register">Get started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -76,12 +107,31 @@ export function PublicHeader() {
             </a>
           ))}
           <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
-            <Button variant="outline" className="border-white/10 bg-transparent text-white" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button className="bg-indigo-500 hover:bg-indigo-400" asChild>
-              <Link href="/register">Get started</Link>
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="outline" className="border-white/10 bg-transparent text-white" asChild>
+                  <Link href={dashboardHref}>Go to Dashboard</Link>
+                </Button>
+                <Button
+                  className="bg-rose-600 hover:bg-rose-500 text-white"
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
+                >
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" className="border-white/10 bg-transparent text-white" asChild>
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button className="bg-indigo-500 hover:bg-indigo-400" asChild>
+                  <Link href="/register">Get started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

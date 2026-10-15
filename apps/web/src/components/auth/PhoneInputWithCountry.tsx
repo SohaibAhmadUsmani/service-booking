@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, Search, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
+import { CountryFlag } from "./CountryFlag";
 
 export interface CountryOption {
   code: string;       // E.164 dial code, e.g. "+1"
@@ -198,7 +199,7 @@ export function PhoneInputWithCountry({
         Phone Number
       </label>
 
-      <div className="flex rounded-xl border border-slate-200 bg-white shadow-sm overflow-visible focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+      <div className="h-11 min-h-[44px] flex items-stretch rounded-xl border border-slate-200 bg-white shadow-sm overflow-visible focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
         {/* Country Code Accessible Dropdown Trigger */}
         <div className="relative">
           <button
@@ -216,10 +217,10 @@ export function PhoneInputWithCountry({
               }
             }}
             onKeyDown={handleDropdownKeyDown}
-            className="h-full border-r border-slate-200 bg-slate-50 hover:bg-slate-100/80 px-3 flex items-center gap-1.5 text-xs font-semibold text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-l-xl cursor-pointer"
+            className="h-full border-r border-slate-200 bg-slate-50 hover:bg-slate-100/80 px-3 flex items-center gap-2 text-xs font-semibold text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-l-xl cursor-pointer flex-shrink-0"
           >
-            <span className="text-sm leading-none" aria-hidden="true">{selectedCountry.flag}</span>
-            <span className="font-mono">{selectedCountry.code}</span>
+            <CountryFlag country={selectedCountry.country} className="w-5 h-3.5" />
+            <span className="font-mono text-slate-700">{selectedCountry.code}</span>
             <ChevronDown
               className={cn(
                 "w-3.5 h-3.5 text-slate-400 transition-transform duration-200",
@@ -292,8 +293,8 @@ export function PhoneInputWithCountry({
                               : "text-slate-700 hover:bg-slate-50"
                           )}
                         >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="text-sm" aria-hidden="true">{c.flag}</span>
+                          <div className="flex items-center gap-2.5 truncate">
+                            <CountryFlag country={c.country} className="w-5 h-3.5" />
                             <span className="truncate">{c.name}</span>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
