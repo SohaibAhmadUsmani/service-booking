@@ -37,6 +37,7 @@ export interface UserProfile {
   lastName: string;
   phone?: string;
   avatarUrl?: string;
+  isEmailVerified?: boolean;
   providerDetails?: ProviderDetailsDto | null;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +51,7 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   tokenVersion?: number;
+  jti?: string;
   iat?: number;
   exp?: number;
 }

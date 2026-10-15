@@ -1,13 +1,18 @@
 import { Router } from "express";
 import { AdminController } from "./controller";
+import { requireAuth, requireRole } from "../../middleware/auth";
+import { UserRole } from "@service-booking/shared";
 
 /** Owner: Aiman */
 export const adminRouter = Router();
 
-// Health check
+// Platform health status (unauthenticated)
 adminRouter.get("/", (_req, res) => {
   res.json({ module: "admin", status: "ready" });
 });
+
+// Enforce authentication and Admin role for all administrative endpoints
+adminRouter.use(requireAuth, requireRole(UserRole.Admin));
 
 // Platform overview & stats
 adminRouter.get("/overview", AdminController.getOverview);

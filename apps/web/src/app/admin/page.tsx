@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { UserRole } from "@service-booking/shared";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   LayoutDashboard,
@@ -855,15 +857,16 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div
-      data-lenis-prevent="true"
-      className="h-screen w-full bg-background text-foreground flex flex-col lg:flex-row font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-hidden"
-    >
-      {/* SIDEBAR */}
-      <aside
+    <ProtectedRoute allowedRoles={[UserRole.Admin]} redirectTo="/login">
+      <div
         data-lenis-prevent="true"
-        className="w-full lg:w-64 h-auto lg:h-screen bg-card/90 lg:bg-[#070913] text-muted-foreground lg:text-slate-300 border-r border-border/60 lg:border-slate-800/80 flex flex-col justify-between p-5 flex-shrink-0 backdrop-blur-xl z-30 lg:overflow-y-auto"
+        className="h-screen w-full bg-background text-foreground flex flex-col lg:flex-row font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-hidden"
       >
+        {/* SIDEBAR (Prism Theme - Fixed Height / No Stretching) */}
+        <aside
+          data-lenis-prevent="true"
+          className="w-full lg:w-64 h-auto lg:h-screen bg-card/90 lg:bg-[#070913] text-muted-foreground lg:text-slate-300 border-r border-border/60 lg:border-slate-800/80 flex flex-col justify-between p-5 flex-shrink-0 backdrop-blur-xl z-30 lg:overflow-y-auto"
+        >
         <div>
           {/* Brand */}
           <div className="flex items-center gap-3 px-2 py-3 mb-6">
@@ -3202,5 +3205,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
     </div>
+  </ProtectedRoute>
   );
 }
