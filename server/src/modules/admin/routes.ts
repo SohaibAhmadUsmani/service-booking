@@ -7,25 +7,29 @@ import { UserRole } from "@service-booking/shared";
 export const adminRouter = Router();
 
 // Platform health status (unauthenticated)
-adminRouter.get("/", (req, res) => {
+adminRouter.get("/", (_req, res) => {
   res.json({ module: "admin", status: "ready" });
 });
 
 // Enforce authentication and Admin role for all administrative endpoints
 adminRouter.use(requireAuth, requireRole(UserRole.Admin));
 
+// Platform overview & stats
 adminRouter.get("/overview", AdminController.getOverview);
 
 // User management
 adminRouter.get("/users", AdminController.getUsers);
+adminRouter.post("/users", AdminController.createUser);
 adminRouter.patch("/users/:id", AdminController.updateUser);
+adminRouter.post("/users/:id/reset-password", AdminController.resetUserPassword);
 adminRouter.delete("/users/:id", AdminController.deleteUser);
 
 // Provider management
 adminRouter.get("/providers", AdminController.getProviders);
 adminRouter.patch("/providers/:id", AdminController.verifyProvider);
+adminRouter.put("/providers/:id", AdminController.updateProvider);
 
-// Services management
+// Services catalog management
 adminRouter.get("/services", AdminController.getServices);
 adminRouter.post("/services", AdminController.createService);
 adminRouter.patch("/services/:id", AdminController.updateService);
@@ -39,16 +43,30 @@ adminRouter.delete("/categories/:id", AdminController.deleteCategory);
 
 // Bookings management
 adminRouter.get("/bookings", AdminController.getBookings);
+adminRouter.patch("/bookings/:id", AdminController.updateBooking);
 adminRouter.patch("/bookings/:id/status", AdminController.updateBookingStatus);
 
-// Reviews management
+// Payments & Financials
+adminRouter.get("/payments", AdminController.getPayments);
+adminRouter.patch("/payments/:id/status", AdminController.updatePaymentStatus);
+adminRouter.post("/payments/:id/refund", AdminController.refundPayment);
+
+// Reviews management & moderation
 adminRouter.get("/reviews", AdminController.getReviews);
 adminRouter.patch("/reviews/:id", AdminController.moderateReview);
 adminRouter.delete("/reviews/:id", AdminController.deleteReview);
 
-// Complaints management
+// Complaints & Dispute resolution
 adminRouter.get("/complaints", AdminController.getComplaints);
 adminRouter.patch("/complaints/:id", AdminController.resolveComplaint);
+
+// Notifications & Broadcast announcements
+adminRouter.post("/notifications/broadcast", AdminController.broadcastNotification);
+adminRouter.post("/notifications/direct", AdminController.sendDirectNotification);
+adminRouter.get("/notifications/history", AdminController.getBroadcastHistory);
+
+// Audit & Activity logs
+adminRouter.get("/activity-logs", AdminController.getActivityLogs);
 
 // Reports & analytics
 adminRouter.get("/reports", AdminController.getReports);
