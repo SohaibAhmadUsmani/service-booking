@@ -159,8 +159,6 @@ export function ParticlesBg({ className = "", count = 35 }: ParticlesBgProps) {
     };
   }, [shouldReduceMotion, count]);
 
-  if (shouldReduceMotion) return null;
-
   return (
     <canvas
       ref={canvasRef}
