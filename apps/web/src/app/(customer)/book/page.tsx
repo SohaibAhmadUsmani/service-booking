@@ -1,17 +1,26 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { CheckCircle2, Loader2, Star } from "lucide-react";
 import CatalogNav from "../../components/catalog/CatalogNav";
 import styles from "../../components/catalog/catalog.module.css";
-import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import { ApiError, apiGet, apiPost } from "../../../lib/api/client";
 
 interface Slot {
   start: string;
   end: string;
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  businessName: string | null;
+  rating: number;
+  reviewCount: number;
 }
 
 interface CreatedBooking {
@@ -34,18 +43,48 @@ function formatDate(date: string) {
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** The next few dates (as YYYY-MM-DD) on which the provider works. */
+function upcomingWorkingDates(days: { day: number }[], count = 6) {
+  const worked = new Set(days.map((d) => d.day));
+  const out: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 60 && out.length < count; i++) {
+    const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (worked.has(x.getDay())) {
+      out.push(`${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`);
+    }
+  }
+  return out;
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <div className={styles.root}>
+      <CatalogNav />
+      <main className={styles.container}>{children}</main>
+    </div>
+  );
+}
+
 function BookingFlow() {
   const params = useSearchParams();
-  const providerId = params.get("providerId") ?? "";
+  const initialProvider = params.get("providerId") ?? "";
   const serviceId = params.get("serviceId") ?? "";
   const priceText = params.get("price") ?? "";
   const price = Number(priceText);
   const serviceName = params.get("serviceName") || "Selected service";
-  const providerName = params.get("providerName") || "";
 
   const { user, isAuthenticated, isLoading: authLoading, refreshSession } = useAuth();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const hasProvider = OBJECT_ID.test(initialProvider);
+  const [providerId, setProviderId] = useState(hasProvider ? initialProvider : "");
+  const [providerName, setProviderName] = useState(params.get("providerName") || "");
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(hasProvider ? 2 : 1);
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -56,6 +95,44 @@ function BookingFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedBooking | null>(null);
+  const [workingDays, setWorkingDays] = useState<{ day: number; start: string; end: string }[] | null>(null);
+
+  useEffect(() => {
+    if (step !== 1) return;
+    let cancelled = false;
+    setProvidersLoading(true);
+    apiGet<Provider[]>("/api/bookings/providers", { auth: false })
+      .then((list) => {
+        if (!cancelled) setProviders(list);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Could not load providers.");
+      })
+      .finally(() => {
+        if (!cancelled) setProvidersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  useEffect(() => {
+    if (!providerId) return;
+    let cancelled = false;
+    setWorkingDays(null);
+    apiGet<{ workingDays: { day: number; start: string; end: string }[] }>(`/api/availability/${providerId}`, {
+      auth: false,
+    })
+      .then((a) => {
+        if (!cancelled) setWorkingDays(a.workingDays);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkingDays([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [providerId]);
 
   async function call<T>(fn: () => Promise<T>): Promise<T> {
     try {
@@ -70,15 +147,16 @@ function BookingFlow() {
     return err instanceof ApiError ? err.message : fallback;
   }
 
-  async function loadSlots(day: string) {
+  async function loadSlots(day: string, forProvider: string) {
     setSlots([]);
     setChosen("");
-    if (!day) return;
+    if (!day || !forProvider) return;
     setSlotsLoading(true);
     try {
-      const data = await apiGet<{ date: string; slots: Slot[] }>(`/api/availability/${providerId}/slots?date=${day}`, {
-        auth: false,
-      });
+      const data = await apiGet<{ date: string; slots: Slot[] }>(
+        `/api/availability/${forProvider}/slots?date=${day}`,
+        { auth: false }
+      );
       setSlots(data.slots);
     } catch (err) {
       setError(messageOf(err, "Could not load available times."));
@@ -90,7 +168,17 @@ function BookingFlow() {
   function onDateChange(day: string) {
     setDate(day);
     setError(null);
-    void loadSlots(day);
+    void loadSlots(day, providerId);
+  }
+
+  function pickProvider(p: Provider) {
+    setProviderId(p.id);
+    setProviderName(p.businessName || p.name);
+    setDate("");
+    setSlots([]);
+    setChosen("");
+    setError(null);
+    setStep(2);
   }
 
   async function submit() {
@@ -111,27 +199,27 @@ function BookingFlow() {
     } catch (err) {
       setError(messageOf(err, "Could not create the booking."));
       if (err instanceof ApiError && err.status === 409) {
-        setStep(1);
-        void loadSlots(date);
+        setStep(2);
+        void loadSlots(date, providerId);
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  const validLink = OBJECT_ID.test(providerId) && OBJECT_ID.test(serviceId) && priceText !== "" && price >= 0;
+  const validService = OBJECT_ID.test(serviceId) && priceText !== "" && price >= 0;
 
   if (authLoading) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <Shell>
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-      </main></div>
+      </Shell>
     );
   }
 
-  if (!validLink) {
+  if (!validService) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <Shell>
         <h1 className={styles.pageTitle}>Book a service</h1>
         <p className="mt-2 text-slate-500">
           Choose a service first.{" "}
@@ -139,13 +227,13 @@ function BookingFlow() {
             Browse services
           </Link>
         </p>
-      </main></div>
+      </Shell>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <Shell>
         <h1 className={styles.pageTitle}>Book a service</h1>
         <p className="mt-2 text-slate-500">
           Please{" "}
@@ -154,16 +242,16 @@ function BookingFlow() {
           </Link>{" "}
           to book {serviceName}.
         </p>
-      </main></div>
+      </Shell>
     );
   }
 
   if (created) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
+      <Shell>
         <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center text-emerald-900">
           <CheckCircle2 className="h-10 w-10" />
-          <h1 className={styles.pageTitle}>Booking requested</h1>
+          <h1 className="text-2xl font-bold">Booking requested</h1>
           <p>
             {formatDate(created.date)} at {created.startTime} - {created.endTime}
           </p>
@@ -172,20 +260,20 @@ function BookingFlow() {
             View my bookings
           </Link>
         </div>
-      </main></div>
+      </Shell>
     );
   }
 
-  const steps = ["Date and time", "Your details", "Confirm"];
+  const steps = ["Provider", "Date and time", "Your details", "Confirm"];
   const detailsOk = name.trim().length > 1 && phone.trim().length >= 7;
 
   return (
-    <div className={styles.root}><CatalogNav /><main className={styles.container}>
+    <Shell>
       <h1 className={styles.pageTitle}>Book a service</h1>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-slate-900">
         <p className="font-semibold">{serviceName}</p>
-        {providerName && <p className="text-sm text-slate-500">with {providerName}</p>}
+        {providerName && step > 1 && <p className="text-sm text-slate-500">with {providerName}</p>}
         <p className="mt-1 font-semibold">Rs {price.toLocaleString()}</p>
       </div>
 
@@ -208,7 +296,59 @@ function BookingFlow() {
 
       {step === 1 && (
         <section className="mt-6">
+          <p className="text-sm font-medium">Choose a provider</p>
+          {providersLoading && <Loader2 className="mt-4 h-5 w-5 animate-spin text-slate-400" />}
+          {!providersLoading && providers.length === 0 && (
+            <p className="mt-4 text-sm text-slate-500">No providers are taking bookings yet.</p>
+          )}
+          <ul className="mt-3 space-y-2">
+            {providers.map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => pickProvider(p)}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-left text-slate-900 hover:border-indigo-400"
+                >
+                  <span>
+                    <span className="block font-semibold">{p.businessName || p.name}</span>
+                    {p.businessName && <span className="block text-sm text-slate-500">{p.name}</span>}
+                  </span>
+                  <span className="flex items-center gap-1 text-sm text-slate-500">
+                    <Star className="h-4 w-4" />
+                    {p.reviewCount > 0 ? `${p.rating.toFixed(1)} (${p.reviewCount})` : "New"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="mt-6">
           <label className="text-sm font-medium">Choose a date</label>
+          {workingDays && workingDays.length === 0 && (
+            <p className="mt-1 text-xs text-slate-500">This provider has not set working days yet.</p>
+          )}
+          {workingDays && workingDays.length > 0 && (
+            <>
+              <p className="mt-1 text-xs text-slate-500">
+                Works on: {workingDays.map((d) => `${DAY_NAMES[d.day]} ${d.start}-${d.end}`).join(", ")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {upcomingWorkingDates(workingDays).map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => onDateChange(day)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm ${
+                      date === day ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 hover:border-indigo-400"
+                    }`}
+                  >
+                    {new Date(`${day}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <input
             type="date"
             min={todayString()}
@@ -240,21 +380,32 @@ function BookingFlow() {
               </div>
             </>
           )}
-          <button
-            onClick={() => {
-              setError(null);
-              if (!name && user) setName(`${user.firstName} ${user.lastName}`.trim());
-              setStep(2);
-            }}
-            disabled={!date || !chosen}
-            className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Continue
-          </button>
+          <div className="mt-6 flex gap-2">
+            <button
+              onClick={() => {
+                setError(null);
+                setStep(1);
+              }}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+            >
+              Change provider
+            </button>
+            <button
+              onClick={() => {
+                setError(null);
+                if (!name && user) setName(`${user.firstName} ${user.lastName}`.trim());
+                setStep(3);
+              }}
+              disabled={!date || !chosen}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Continue
+            </button>
+          </div>
         </section>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <section className="mt-6 space-y-4">
           <div>
             <label className="text-sm font-medium">Full name</label>
@@ -284,13 +435,13 @@ function BookingFlow() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setStep(1)}
+              onClick={() => setStep(2)}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
             >
               Back
             </button>
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(4)}
               disabled={!detailsOk}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
             >
@@ -300,10 +451,11 @@ function BookingFlow() {
         </section>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <section className="mt-6">
           <dl className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900">
             <div className="flex justify-between"><dt className="text-slate-500">Service</dt><dd>{serviceName}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-500">Provider</dt><dd>{providerName}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Date</dt><dd>{formatDate(date)}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Time</dt><dd>{chosen}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Name</dt><dd>{name}</dd></div>
@@ -313,7 +465,7 @@ function BookingFlow() {
           </dl>
           <div className="mt-4 flex gap-2">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(3)}
               disabled={submitting}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
             >
@@ -329,7 +481,7 @@ function BookingFlow() {
           </div>
         </section>
       )}
-    </main></div>
+    </Shell>
   );
 }
 
