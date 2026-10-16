@@ -2,37 +2,50 @@
 
 import { useState } from "react";
 
+export type Category = { id: string; name: string };
+
 export type Service = {
   id: string;
   name: string;
-  category: string;
+  categoryId?: string;
   price: number;
-  durationMin: number;
+  duration?: number;
+  description?: string;
+  isActive: boolean;
+};
+
+export type ServiceInput = {
+  name: string;
+  categoryId: string;
+  price: number;
+  duration: number;
   description: string;
 };
 
 type Props = {
   initial?: Service;
-  onSave: (data: Omit<Service, "id">) => void;
+  categories: Category[];
+  onSave: (data: ServiceInput) => void;
   onCancel: () => void;
 };
 
-const categories = ["Cleaning", "Repair", "Plumbing", "Electrical", "Beauty", "Other"];
-
-export default function ServiceForm({ initial, onSave, onCancel }: Props) {
+export default function ServiceForm({ initial, categories, onSave, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState(initial?.category ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [price, setPrice] = useState(initial ? String(initial.price) : "");
-  const [durationMin, setDurationMin] = useState(initial ? String(initial.durationMin) : "");
+  const [duration, setDuration] = useState(initial?.duration ? String(initial.duration) : "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function validate() {
     const e: Record<string, string> = {};
     if (name.trim().length < 3) e.name = "Name must be at least 3 characters";
-    if (!category) e.category = "Choose a category";
+    if (!categoryId) e.categoryId = "Choose a category";
     if (!price || Number(price) <= 0) e.price = "Price must be greater than 0";
-    if (!durationMin || Number(durationMin) < 15) e.durationMin = "Minimum duration is 15 minutes";
+    const mins = Number(duration);
+    if (!duration || !Number.isInteger(mins) || mins < 15 || mins > 480) {
+      e.duration = "Enter whole minutes between 15 and 480";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -41,9 +54,9 @@ export default function ServiceForm({ initial, onSave, onCancel }: Props) {
     if (!validate()) return;
     onSave({
       name: name.trim(),
-      category,
+      categoryId,
       price: Number(price),
-      durationMin: Number(durationMin),
+      duration: Number(duration),
       description: description.trim(),
     });
   }
@@ -63,25 +76,30 @@ export default function ServiceForm({ initial, onSave, onCancel }: Props) {
 
       <div>
         <label className="text-sm font-medium">Category</label>
-        <select className={input} value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
           <option value="">Select category</option>
           {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
           ))}
         </select>
-        {errors.category && <p className={err}>{errors.category}</p>}
+        {categories.length === 0 && (
+          <p className="mt-1 text-xs text-gray-500">No categories are available yet.</p>
+        )}
+        {errors.categoryId && <p className={err}>{errors.categoryId}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium">Price ($)</label>
+          <label className="text-sm font-medium">Price (PKR)</label>
           <input type="number" className={input} value={price} onChange={(e) => setPrice(e.target.value)} />
           {errors.price && <p className={err}>{errors.price}</p>}
         </div>
         <div>
           <label className="text-sm font-medium">Duration (minutes)</label>
-          <input type="number" className={input} value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
-          {errors.durationMin && <p className={err}>{errors.durationMin}</p>}
+          <input type="number" className={input} value={duration} onChange={(e) => setDuration(e.target.value)} />
+          {errors.duration && <p className={err}>{errors.duration}</p>}
         </div>
       </div>
 
@@ -91,7 +109,10 @@ export default function ServiceForm({ initial, onSave, onCancel }: Props) {
       </div>
 
       <div className="flex gap-3">
-        <button onClick={handleSubmit} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+        <button
+          onClick={handleSubmit}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
           Save
         </button>
         <button onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50">

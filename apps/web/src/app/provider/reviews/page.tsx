@@ -1,94 +1,138 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../../lib/auth/AuthContext";
+import { useAuthedApi } from "../../../lib/api/useAuthedApi";
 
 type Review = {
   id: string;
-  customer: string;
-  service: string;
-  rating: number; // 1-5
-  comment: string;
-  date: string; // YYYY-MM-DD
-  reply?: string;
+  bookingId: string;
+  customerId: string;
+  providerId: string;
+  serviceId?: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt?: string;
 };
 
-// TODO: replace with Namra's reviews API (filtered by provider)
-const initialReviews: Review[] = [
-  { id: "r1", customer: "Ali Khan", service: "Home Cleaning", rating: 5, comment: "Very professional and on time. The house looks great.", date: "2026-10-09", reply: "Thank you Ali, glad you liked it!" },
-  { id: "r2", customer: "Usman Raza", service: "Pipe Leak Fix", rating: 4, comment: "Fixed the leak quickly. Slightly late but good work.", date: "2026-10-09" },
-  { id: "r3", customer: "Sara Ahmed", service: "Pipe Leak Fix", rating: 5, comment: "Excellent service, will book again.", date: "2026-09-16" },
-  { id: "r4", customer: "Bilal Shah", service: "Home Cleaning", rating: 3, comment: "Decent job but missed a couple of spots.", date: "2026-08-19" },
-  { id: "r5", customer: "Hina Malik", service: "AC Repair", rating: 2, comment: "Had to call back as the issue returned.", date: "2026-08-02" },
-];
+type ReviewPage = { items?: Review[]; totalPages?: number };
+type ReviewEnvelope = { data?: ReviewPage } & ReviewPage;
+type Summary = { averageRating: number; reviewCount: number };
+type SummaryEnvelope = { data?: Summary } & Partial<Summary>;
+
+const MAX_PAGES = 25;
+const shortId = (id?: string) => (id ? `…${id.slice(-6)}` : "—");
 
 function Stars({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(5, Math.round(value)));
   return (
-    <span aria-label={`${value} out of 5`} className="text-yellow-500">
-      {"★".repeat(value)}
-      <span className="text-gray-300">{"★".repeat(5 - value)}</span>
+    <span aria-label={`${v} out of 5`} className="text-yellow-500">
+      {"★".repeat(v)}
+      <span className="text-gray-300">{"★".repeat(5 - v)}</span>
     </span>
   );
 }
 
 export default function ReviewsPage() {
-  const [reviews, setReviews] = useState<Review[]>(initialReviews);
-  const [filter, setFilter] = useState<"All" | 1 | 2 | 3 | 4 | 5>("All");
-  const [replyingId, setReplyingId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
+  const request = useAuthedApi();
+  const { user } = useAuth();
+  const info = (user ?? {}) as Record<string, unknown>;
+  const providerId = String(info.id ?? info._id ?? "");
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState<"all" | 1 | 2 | 3 | 4 | 5>("all");
+
+  const load = useCallback(async () => {
+    if (!providerId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const all: Review[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const json = await request<ReviewEnvelope>(
+          `/api/reviews?providerId=${encodeURIComponent(providerId)}&page=${page}&limit=20`
+        );
+        const data = json.data ?? json;
+        all.push(...(data.items ?? []));
+        totalPages = data.totalPages ?? 1;
+        page += 1;
+      } while (page <= totalPages && page <= MAX_PAGES);
+      setReviews(all);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load reviews");
+    }
+
+    // The rating summary is separate: if it fails we compute it from the reviews
+    try {
+      const s = await request<SummaryEnvelope>(`/api/reviews/provider/${encodeURIComponent(providerId)}`);
+      const data = (s.data ?? s) as Partial<Summary>;
+      if (typeof data.averageRating === "number" && typeof data.reviewCount === "number") {
+        setSummary({ averageRating: data.averageRating, reviewCount: data.reviewCount });
+      }
+    } catch {
+      setSummary(null);
+    }
+    setLoading(false);
+  }, [providerId, request]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const stats = useMemo(() => {
-    const total = reviews.length;
-    const average = total ? reviews.reduce((s, r) => s + r.rating, 0) / total : 0;
-    const distribution = [5, 4, 3, 2, 1].map((star) => ({
-      star,
-      count: reviews.filter((r) => r.rating === star).length,
-    }));
-    return { total, average, distribution };
-  }, [reviews]);
+    const computedAvg = reviews.length
+      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+      : 0;
+    return {
+      average: summary?.averageRating ?? computedAvg,
+      count: summary?.reviewCount ?? reviews.length,
+      // The API has no star breakdown, so it is counted from the loaded reviews
+      distribution: [5, 4, 3, 2, 1].map((star) => ({
+        star,
+        count: reviews.filter((r) => r.rating === star).length,
+      })),
+    };
+  }, [reviews, summary]);
 
   const visible = reviews
-    .filter((r) => filter === "All" || r.rating === filter)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .filter((r) => filter === "all" || r.rating === filter)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  function startReply(r: Review) {
-    setReplyingId(r.id);
-    setReplyText(r.reply ?? "");
-    setError("");
+  const filterOptions: ("all" | 1 | 2 | 3 | 4 | 5)[] = ["all", 5, 4, 3, 2, 1];
+
+  if (!providerId) {
+    return <div className="text-sm text-gray-500">Loading your account...</div>;
   }
-
-  function saveReply(id: string) {
-    const text = replyText.trim();
-    if (text.length < 3) {
-      setError("Reply must be at least 3 characters");
-      return;
-    }
-    // TODO: send reply to the reviews API
-    setReviews((list) => list.map((r) => (r.id === id ? { ...r, reply: text } : r)));
-    setReplyingId(null);
-    setReplyText("");
-    setError("");
-  }
-
-  function deleteReply(id: string) {
-    if (!window.confirm("Delete your reply?")) return;
-    setReviews((list) => list.map((r) => (r.id === id ? { ...r, reply: undefined } : r)));
-  }
-
-  const filters: ("All" | 1 | 2 | 3 | 4 | 5)[] = ["All", 5, 4, 3, 2, 1];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Reviews</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Reviews</h1>
+        <button onClick={load} className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-white p-5">
           <p className="text-sm text-gray-500">Overall rating</p>
-          <p className="mt-2 text-4xl font-semibold">{stats.average.toFixed(1)}</p>
+          <p className="mt-2 text-4xl font-semibold">{loading ? "…" : stats.average.toFixed(1)}</p>
           <div className="mt-1 text-lg">
-            <Stars value={Math.round(stats.average)} />
+            <Stars value={stats.average} />
           </div>
-          <p className="mt-1 text-sm text-gray-500">{stats.total} reviews</p>
+          <p className="mt-1 text-sm text-gray-500">{stats.count} reviews</p>
         </div>
 
         <div className="rounded-xl border bg-white p-5 md:col-span-2">
@@ -100,7 +144,7 @@ export default function ReviewsPage() {
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
                   <div
                     className="h-full rounded-full bg-yellow-400"
-                    style={{ width: `${stats.total ? (d.count / stats.total) * 100 : 0}%` }}
+                    style={{ width: `${reviews.length ? (d.count / reviews.length) * 100 : 0}%` }}
                   />
                 </div>
                 <span className="w-6 text-right text-gray-500">{d.count}</span>
@@ -111,7 +155,7 @@ export default function ReviewsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {filters.map((f) => (
+        {filterOptions.map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -121,84 +165,37 @@ export default function ReviewsPage() {
                 : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
-            {f === "All" ? "All" : `${f} ★`}
+            {f === "all" ? "All" : `${f} ★`}
           </button>
         ))}
       </div>
 
       <div className="space-y-4">
-        {visible.map((r) => (
-          <div key={r.id} className="rounded-xl border bg-white p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="font-medium">{r.customer}</p>
-                <p className="text-xs text-gray-500">
-                  {r.service} · {r.date}
-                </p>
-              </div>
-              <Stars value={r.rating} />
-            </div>
-
-            <p className="mt-3 text-sm text-gray-700">{r.comment}</p>
-
-            {r.reply && replyingId !== r.id && (
-              <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm">
-                <p className="text-xs font-medium text-gray-500">Your reply</p>
-                <p className="mt-1 text-gray-700">{r.reply}</p>
-                <div className="mt-2 space-x-3 text-xs">
-                  <button onClick={() => startReply(r)} className="text-indigo-600 hover:underline">
-                    Edit
-                  </button>
-                  <button onClick={() => deleteReply(r.id)} className="text-red-600 hover:underline">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {replyingId === r.id && (
-              <div className="mt-4 space-y-2">
-                <textarea
-                  rows={3}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Write a reply"
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                />
-                {error && <p className="text-xs text-red-600">{error}</p>}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => saveReply(r.id)}
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                  >
-                    Save reply
-                  </button>
-                  <button
-                    onClick={() => {
-                      setReplyingId(null);
-                      setError("");
-                    }}
-                    className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!r.reply && replyingId !== r.id && (
-              <button
-                onClick={() => startReply(r)}
-                className="mt-4 text-sm text-indigo-600 hover:underline"
-              >
-                Reply
-              </button>
-            )}
-          </div>
-        ))}
-        {visible.length === 0 && (
+        {loading && (
           <div className="rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
-            No reviews match this filter.
+            Loading reviews...
+          </div>
+        )}
+        {!loading &&
+          visible.map((r) => (
+            <div key={r.id} className="rounded-xl border bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">Customer {shortId(r.customerId)}</p>
+                  <p className="text-xs text-gray-500">
+                    Booking {shortId(r.bookingId)} · {r.createdAt.slice(0, 10)}
+                  </p>
+                </div>
+                <Stars value={r.rating} />
+              </div>
+              <p className="mt-3 text-sm text-gray-700">
+                {r.comment?.trim() ? r.comment : "No written comment."}
+              </p>
+            </div>
+          ))}
+        {!loading && visible.length === 0 && (
+          <div className="rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
+            No reviews yet.
           </div>
         )}
       </div>

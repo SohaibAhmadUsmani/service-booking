@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "../../lib/auth/AuthContext";
 
 const links = [
   { href: "/provider", label: "Dashboard" },
@@ -19,6 +20,11 @@ const links = [
 export default function ProviderShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { user, logout } = useAuth();
+
+  // Field names read defensively until the UserProfile type is confirmed
+    const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Provider";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -64,8 +70,13 @@ export default function ProviderShell({ children }: { children: React.ReactNode 
           </button>
           <span className="hidden text-sm text-gray-500 md:block">Welcome back</span>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Maira Asim</span>
-            <div className="h-8 w-8 rounded-full bg-indigo-500" />
+            <span className="text-sm text-gray-600">{displayName}</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-medium text-white">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <button onClick={() => logout()} className="text-sm text-red-600 hover:underline">
+              Log out
+            </button>
           </div>
         </header>
         <main className="p-6">{children}</main>

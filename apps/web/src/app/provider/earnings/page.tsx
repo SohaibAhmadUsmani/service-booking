@@ -1,61 +1,111 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../../lib/auth/AuthContext";
+import { useAuthedApi } from "../../../lib/api/useAuthedApi";
 
-type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 type Payment = {
   id: string;
   bookingId: string;
-  customer: string;
-  service: string;
-  date: string; // YYYY-MM-DD
+  customerId: string;
+  providerId: string;
   amount: number;
+  currency?: string;
   status: PaymentStatus;
+  method?: string;
+  paidAt?: string | null;
+  createdAt?: string;
 };
 
-// TODO: replace with Namra's payments API (filtered by provider)
-const payments: Payment[] = [
-  { id: "P-001", bookingId: "BK-0960", customer: "Bilal Shah", service: "Home Cleaning", date: "2026-08-18", amount: 60, status: "Paid" },
-  { id: "P-002", bookingId: "BK-0975", customer: "Ali Khan", service: "Home Cleaning", date: "2026-09-02", amount: 60, status: "Paid" },
-  { id: "P-003", bookingId: "BK-0981", customer: "Sara Ahmed", service: "Pipe Leak Fix", date: "2026-09-15", amount: 35, status: "Paid" },
-  { id: "P-004", bookingId: "BK-0990", customer: "Ali Khan", service: "AC Repair", date: "2026-09-21", amount: 45, status: "Paid" },
-  { id: "P-005", bookingId: "BK-1003", customer: "Usman Raza", service: "Pipe Leak Fix", date: "2026-10-09", amount: 35, status: "Paid" },
-  { id: "P-006", bookingId: "BK-1001", customer: "Ali Khan", service: "Home Cleaning", date: "2026-10-08", amount: 60, status: "Pending" },
-  { id: "P-007", bookingId: "BK-1002", customer: "Sara Ahmed", service: "AC Repair", date: "2026-10-08", amount: 45, status: "Pending" },
-  { id: "P-008", bookingId: "BK-1005", customer: "Bilal Shah", service: "AC Repair", date: "2026-10-06", amount: 45, status: "Failed" },
-  { id: "P-009", bookingId: "BK-1006", customer: "Ayesha Noor", service: "Pipe Leak Fix", date: "2026-10-05", amount: 35, status: "Refunded" },
-];
+type PaymentPage = { items?: Payment[]; totalPages?: number };
+type Envelope = { data?: PaymentPage } & PaymentPage;
+
+const MAX_PAGES = 25;
+
+const statusLabel: Record<PaymentStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Failed",
+  refunded: "Refunded",
+};
 
 const badge: Record<PaymentStatus, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Paid: "bg-green-100 text-green-800",
-  Failed: "bg-red-100 text-red-700",
-  Refunded: "bg-gray-200 text-gray-700",
+  pending: "bg-yellow-100 text-yellow-800",
+  paid: "bg-green-100 text-green-800",
+  failed: "bg-red-100 text-red-700",
+  refunded: "bg-gray-200 text-gray-700",
 };
 
+const filters: ("all" | PaymentStatus)[] = ["all", "paid", "pending", "failed", "refunded"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// Paid payments count on the day they were paid; fall back to created date
+const dateOf = (p: Payment) => p.paidAt ?? p.createdAt ?? "";
+const shortId = (id: string) => (id ? `…${id.slice(-6)}` : "—");
+
 export default function EarningsPage() {
-  const [filter, setFilter] = useState<"All" | PaymentStatus>("All");
+  const request = useAuthedApi();
+  const { user } = useAuth();
+  const info = (user ?? {}) as Record<string, unknown>;
+  const providerId = String(info.id ?? info._id ?? "");
+
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState<"all" | PaymentStatus>("all");
+
+  const load = useCallback(async () => {
+    if (!providerId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const all: Payment[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const json = await request<Envelope>(
+          `/api/payments?providerId=${encodeURIComponent(providerId)}&page=${page}&limit=20`
+        );
+        const data = json.data ?? json;
+        all.push(...(data.items ?? []));
+        totalPages = data.totalPages ?? 1;
+        page += 1;
+      } while (page <= totalPages && page <= MAX_PAGES);
+      setPayments(all);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load payments");
+    } finally {
+      setLoading(false);
+    }
+  }, [providerId, request]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const currency = payments.find((p) => p.currency)?.currency ?? "";
+  const money = (n: number) => `${currency ? currency + " " : ""}${n.toLocaleString()}`;
 
   const summary = useMemo(() => {
     const sum = (s: PaymentStatus) =>
-      payments.filter((p) => p.status === s).reduce((t, p) => t + p.amount, 0);
-    const thisMonth = "2026-10";
+      payments.filter((p) => p.status === s).reduce((t, p) => t + Number(p.amount), 0);
+    const now = new Date();
+    const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     return {
-      totalPaid: sum("Paid"),
+      totalPaid: sum("paid"),
       thisMonth: payments
-        .filter((p) => p.status === "Paid" && p.date.startsWith(thisMonth))
-        .reduce((t, p) => t + p.amount, 0),
-      pending: sum("Pending"),
-      refunded: sum("Refunded"),
+        .filter((p) => p.status === "paid" && dateOf(p).startsWith(thisMonthKey))
+        .reduce((t, p) => t + Number(p.amount), 0),
+      pending: sum("pending"),
+      refunded: sum("refunded"),
     };
-  }, []);
+  }, [payments]);
 
-  // Paid earnings grouped by month, last 6 months
+  // Paid earnings by month, last 6 months (calculated here: the API has no summary endpoint)
   const monthly = useMemo(() => {
-    const now = new Date(2026, 9, 1); // Oct 2026 (mock "today")
+    const now = new Date();
     const months: { key: string; label: string; total: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -63,38 +113,51 @@ export default function EarningsPage() {
       months.push({ key, label: monthNames[d.getMonth()], total: 0 });
     }
     payments
-      .filter((p) => p.status === "Paid")
+      .filter((p) => p.status === "paid")
       .forEach((p) => {
-        const m = months.find((x) => p.date.startsWith(x.key));
-        if (m) m.total += p.amount;
+        const m = months.find((x) => dateOf(p).startsWith(x.key));
+        if (m) m.total += Number(p.amount);
       });
     return months;
-  }, []);
+  }, [payments]);
 
   const maxMonth = Math.max(...monthly.map((m) => m.total), 1);
 
   const visible = payments
-    .filter((p) => filter === "All" || p.status === filter)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .filter((p) => filter === "all" || p.status === filter)
+    .sort((a, b) => dateOf(b).localeCompare(dateOf(a)));
 
   const cards = [
-    { label: "Total earned (paid)", value: `$${summary.totalPaid}` },
-    { label: "This month", value: `$${summary.thisMonth}` },
-    { label: "Pending payments", value: `$${summary.pending}` },
-    { label: "Refunded", value: `$${summary.refunded}` },
+    { label: "Total earned (paid)", value: money(summary.totalPaid) },
+    { label: "This month", value: money(summary.thisMonth) },
+    { label: "Pending payments", value: money(summary.pending) },
+    { label: "Refunded", value: money(summary.refunded) },
   ];
 
-  const filters: ("All" | PaymentStatus)[] = ["All", "Paid", "Pending", "Failed", "Refunded"];
+  if (!providerId) {
+    return <div className="text-sm text-gray-500">Loading your account...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Earnings</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Earnings</h1>
+        <button onClick={load} className="rounded-lg border bg-white px-3 py-1 text-sm hover:bg-gray-50">
+          Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <div key={c.label} className="rounded-xl border bg-white p-5">
             <p className="text-sm text-gray-500">{c.label}</p>
-            <p className="mt-2 text-2xl font-semibold">{c.value}</p>
+            <p className="mt-2 text-2xl font-semibold">{loading ? "…" : c.value}</p>
           </div>
         ))}
       </div>
@@ -104,7 +167,7 @@ export default function EarningsPage() {
         <div className="flex h-48 items-end gap-3">
           {monthly.map((m) => (
             <div key={m.key} className="flex flex-1 flex-col items-center justify-end gap-1">
-              <span className="text-xs text-gray-600">${m.total}</span>
+              <span className="text-xs text-gray-600">{m.total.toLocaleString()}</span>
               <div
                 className="w-full rounded-t-md bg-indigo-500"
                 style={{ height: `${(m.total / maxMonth) * 100}%`, minHeight: m.total > 0 ? 4 : 0 }}
@@ -129,7 +192,7 @@ export default function EarningsPage() {
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                {f}
+                {f === "all" ? "All" : statusLabel[f]}
               </button>
             ))}
           </div>
@@ -138,32 +201,40 @@ export default function EarningsPage() {
           <table className="w-full text-left text-sm">
             <thead className="text-gray-500">
               <tr>
-                <th className="px-5 py-3">Payment ID</th>
+                <th className="px-5 py-3">Payment</th>
                 <th className="px-5 py-3">Booking</th>
                 <th className="px-5 py-3">Customer</th>
-                <th className="px-5 py-3">Service</th>
                 <th className="px-5 py-3">Date</th>
+                <th className="px-5 py-3">Method</th>
                 <th className="px-5 py-3">Amount</th>
                 <th className="px-5 py-3">Status</th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="px-5 py-3 font-medium">{p.id}</td>
-                  <td className="px-5 py-3">{p.bookingId}</td>
-                  <td className="px-5 py-3">{p.customer}</td>
-                  <td className="px-5 py-3">{p.service}</td>
-                  <td className="px-5 py-3">{p.date}</td>
-                  <td className="px-5 py-3">${p.amount}</td>
-                  <td className="px-5 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${badge[p.status]}`}>
-                      {p.status}
-                    </span>
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-8 text-center text-gray-500">
+                    Loading payments...
                   </td>
                 </tr>
-              ))}
-              {visible.length === 0 && (
+              )}
+              {!loading &&
+                visible.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="px-5 py-3 font-medium">{shortId(p.id)}</td>
+                    <td className="px-5 py-3">{shortId(p.bookingId)}</td>
+                    <td className="px-5 py-3">{shortId(p.customerId)}</td>
+                    <td className="px-5 py-3">{dateOf(p).slice(0, 10) || "—"}</td>
+                    <td className="px-5 py-3">{p.method ?? "—"}</td>
+                    <td className="px-5 py-3">{money(Number(p.amount))}</td>
+                    <td className="px-5 py-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${badge[p.status]}`}>
+                        {statusLabel[p.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              {!loading && visible.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-8 text-center text-gray-500">
                     No payments match this filter.
