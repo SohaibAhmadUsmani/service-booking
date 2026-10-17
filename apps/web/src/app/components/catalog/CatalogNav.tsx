@@ -27,6 +27,9 @@ export default function CatalogNav({ active }: { active?: CatalogNavKey }) {
             {link.label}
           </Link>
         ))}
+        <Link href="/book" className={styles.navLink} style={{ fontWeight: 600, color: "#4f46e5" }}>
+          Book a service
+        </Link>
       </div>
     </nav>
   );
