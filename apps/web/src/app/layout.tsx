@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased selection:bg-indigo-500 selection:text-white">
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-indigo-500 selection:text-white">
         <ThemeProvider>
           <SmoothScrollProvider>
             <AuthProvider>{children}</AuthProvider>
