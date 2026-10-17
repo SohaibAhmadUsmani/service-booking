@@ -138,6 +138,21 @@ async function notifyStatusChange(booking: BookingNotifyContext, status: Booking
         message: `Booking ${booking.bookingId} is complete.`,
       }
     );
+  } else if (status === "no_show") {
+    events.push(
+      {
+        userId: customer,
+        type: NotificationType.BookingCancelled,
+        title: "Booking marked as no-show",
+        message: `Your booking ${booking.bookingId} on ${slot} was marked as no-show.`,
+      },
+      {
+        userId: provider,
+        type: NotificationType.BookingCancelled,
+        title: "Booking marked as no-show",
+        message: `Booking ${booking.bookingId} on ${slot} was marked as no-show.`,
+      }
+    );
   }
 
   await notifyBookingEvent(events, data);
@@ -195,6 +210,8 @@ export const bookingsService = {
       customerId: input.customerId,
       providerId: input.providerId,
       serviceId: input.serviceId,
+      categoryId: (input as any).categoryId,
+      serviceType: (input as any).serviceType,
       date: input.date,
       startTime: input.startTime,
       endTime,

@@ -114,10 +114,19 @@ export class AdminService {
     const overview = await this.repo.getOverviewStats();
     const categories = await this.repo.getCategories();
     const bookings = await this.repo.getBookings();
+    const services = await this.repo.getServices();
+
+    const serviceCatMap = new Map<string, string>();
+    for (const s of services) {
+      if (s.categoryId) serviceCatMap.set(String(s._id), String(s.categoryId));
+    }
 
     // Calculate real category distribution based on actual bookings
     const catDistribution = categories.map((c) => {
-      const matchCount = bookings.filter((b: any) => String(b.categoryId) === String(c._id)).length;
+      const matchCount = bookings.filter((b: any) => {
+        const catId = b.categoryId ? String(b.categoryId) : (b.serviceId ? serviceCatMap.get(String(b.serviceId)) : undefined);
+        return catId === String(c._id);
+      }).length;
       return {
         name: c.name,
         count: matchCount,

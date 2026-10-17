@@ -10,7 +10,8 @@
     "test:reviews": "tsx tests/phase2-reviews.test.ts",
     "test:payments": "tsx tests/phase3-payments.test.ts",
     "test:notifications": "tsx tests/phase4-notifications.test.ts",
-    "test:reminders": "tsx tests/phase4b-reminders.test.ts"
+    "test:reminders": "tsx tests/phase4b-reminders.test.ts",
+    "test:complaints": "tsx tests/phase5-complaints.test.ts"
   },
   "dependencies": {
     "@service-booking/shared": "*",

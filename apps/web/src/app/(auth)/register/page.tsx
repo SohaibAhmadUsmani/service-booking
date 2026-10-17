@@ -48,8 +48,16 @@ export default function RegisterPage() {
 
   const isSubmittingRef = useRef(false);
 
-  // Form reset on unmount
+  // Form reset on unmount and query parameter role initialization
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const queryRole = params.get("role");
+      if (queryRole === "provider") {
+        setRole(UserRole.Provider);
+      }
+    }
+
     return () => {
       setFieldErrors({});
       setErrorMessage(null);

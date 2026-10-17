@@ -273,6 +273,25 @@ export default function CustomerBookingsPage() {
                   </div>
                 )}
 
+                {!active && (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-3">
+                    <Link
+                      href="/complaints"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600"
+                    >
+                      Report an issue
+                    </Link>
+                    {b.status === "completed" && (
+                      <Link
+                        href="/providers"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                      >
+                        Rate & review
+                      </Link>
+                    )}
+                  </div>
+                )}
+
                 {open && (
                   <div className="mt-4 rounded-lg bg-gray-50 p-3">
                     <label className="text-sm font-medium text-gray-900">Pick a new date</label>

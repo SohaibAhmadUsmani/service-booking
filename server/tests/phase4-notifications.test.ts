@@ -10,6 +10,8 @@ import {
   test,
 } from "./helpers";
 import { Notification } from "../src/modules/notifications/model";
+import { UserModel } from "../src/modules/users/models/user.model";
+import { getJwtSecret } from "../src/middleware/auth";
 
 async function main() {
   const ctx = await startTestServer();
@@ -19,11 +21,22 @@ async function main() {
     const customer = await registerUser(baseUrl, "customer");
     const provider = await registerUser(baseUrl, "provider");
     const other = await registerUser(baseUrl, "customer");
+    await UserModel.updateOne({ _id: other.id }, { role: "admin" });
 
     const adminToken = jwt.sign(
-      { userId: other.id, email: other.email, role: "admin" },
-      process.env.JWT_SECRET as string,
-      { algorithm: "HS256", expiresIn: "1h" }
+      {
+        userId: other.id,
+        email: other.email,
+        role: "admin",
+        tokenVersion: 0,
+      },
+      getJwtSecret(),
+      {
+        algorithm: "HS256",
+        expiresIn: "1h",
+        issuer: process.env.JWT_ISSUER || "service-booking-api",
+        audience: process.env.JWT_AUDIENCE || "service-booking-client",
+      }
     );
 
     let seedCounter = 0;
@@ -374,6 +387,7 @@ async function main() {
       }));
       const availability = await api(baseUrl, `/api/availability/${provider.id}`, {
         method: "PUT",
+        token: provider.token,
         body: { slotDurationMinutes: 30, workingDays },
       });
       assertEqual(availability.status, 200, "availability set");
@@ -382,13 +396,13 @@ async function main() {
         customerId: customer.id,
         providerId: provider.id,
         status: "pending",
-        date: "2026-10-15",
+        date: "2026-10-25",
         startTime: "10:00",
       });
       const res = await api(baseUrl, `/api/bookings/${String(booking._id)}/reschedule`, {
         method: "PATCH",
         token: customer.token,
-        body: { date: "2026-10-16", startTime: "11:00" },
+        body: { date: "2026-10-26", startTime: "11:00" },
       });
       assertEqual(res.status, 200, `reschedule status (got ${res.status})`);
 
@@ -410,13 +424,13 @@ async function main() {
       });
       const confirm = await api(baseUrl, `/api/bookings/${String(booking._id)}/status`, {
         method: "PATCH",
-        token: customer.token,
+        token: provider.token,
         body: { status: "confirmed" },
       });
       assertEqual(confirm.status, 200, "confirm status");
       const complete = await api(baseUrl, `/api/bookings/${String(booking._id)}/status`, {
         method: "PATCH",
-        token: customer.token,
+        token: provider.token,
         body: { status: "completed" },
       });
       assertEqual(complete.status, 200, "complete status");

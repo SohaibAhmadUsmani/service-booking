@@ -13,9 +13,14 @@ export async function useServicePrice(req: Request, _res: Response, next: NextFu
     if (!db) throw new Error("Database connection not ready");
     const svc = await db
       .collection("services")
-      .findOne({ _id: new mongoose.Types.ObjectId(id) }, { projection: { price: 1, isActive: 1 } });
+      .findOne({ _id: new mongoose.Types.ObjectId(id) }, { projection: { price: 1, isActive: 1, categoryId: 1, serviceType: 1 } });
     if (!svc || svc.isActive === false) throw new AppError("That service is not available", 404);
-    req.body = { ...req.body, price: svc.price };
+    req.body = {
+      ...req.body,
+      price: svc.price,
+      categoryId: svc.categoryId,
+      serviceType: svc.serviceType || "in_person",
+    };
     next();
   } catch (err) {
     next(err);

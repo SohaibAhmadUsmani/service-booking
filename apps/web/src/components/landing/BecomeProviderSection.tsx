@@ -28,7 +28,7 @@ export function BecomeProviderSection() {
               description="Join hundreds of professionals growing with ServiceBook. List services, manage bookings, and get paid — all in one place."
             />
             <div className="mt-8 flex flex-wrap gap-4">
-              <PillCtaButton onClick={() => router.push("/register")}>Start earning</PillCtaButton>
+              <PillCtaButton onClick={() => router.push("/register?role=provider")}>Start earning</PillCtaButton>
               <PillCtaButton href="/provider" variant="outline">
                 Provider dashboard
               </PillCtaButton>

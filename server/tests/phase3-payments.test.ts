@@ -131,7 +131,7 @@ async function main() {
       assertEqual(res.body.data.status, "paid", "status paid");
       assert(res.body.data.paidAt, "paidAt set");
 
-      const booking = await api(baseUrl, `/api/bookings/${b1._id}`);
+      const booking = await api(baseUrl, `/api/bookings/${b1._id}`, { token: customer.token });
       assertEqual(booking.body.status, "confirmed", "related booking moved pending → confirmed");
     });
 

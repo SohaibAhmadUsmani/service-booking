@@ -12,6 +12,8 @@ import { searchRouter } from "./search/routes";
 import { servicesRouter } from "./services/routes";
 import { usersRouter } from "./users/routes";
 
+import { complaintsRouter } from "./complaints/routes";
+
 /** Mount all domain routers — each team owns its module folder. */
 export function registerModuleRoutes(app: Express) {
   app.use("/api/auth", authRouter);
@@ -25,5 +27,6 @@ export function registerModuleRoutes(app: Express) {
   app.use("/api/reviews", reviewsRouter);
   app.use("/api/payments", paymentsRouter);
   app.use("/api/notifications", notificationsRouter);
+  app.use("/api/complaints", complaintsRouter);
   app.use("/api/admin", adminRouter);
 }

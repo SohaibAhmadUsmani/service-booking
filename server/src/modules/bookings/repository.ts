@@ -1,4 +1,4 @@
-﻿import { Types } from "mongoose";
+import { Types } from "mongoose";
 import { ACTIVE_STATUSES, Booking, BookingStatus } from "./model";
 
 export interface NewBooking {
@@ -6,6 +6,8 @@ export interface NewBooking {
   customerId: string;
   providerId: string;
   serviceId: string;
+  categoryId?: string;
+  serviceType?: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -20,6 +22,8 @@ export const bookingsRepository = {
       customerId: new Types.ObjectId(data.customerId),
       providerId: new Types.ObjectId(data.providerId),
       serviceId: new Types.ObjectId(data.serviceId),
+      categoryId: data.categoryId ? new Types.ObjectId(data.categoryId) : undefined,
+      serviceType: data.serviceType || "in_person",
     });
     return doc.toObject();
   },

@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/bookings", label: "My bookings" },
   { href: "/notifications", label: "Notifications" },
   { href: "/payments", label: "Payments" },
+  { href: "/complaints", label: "Disputes" },
 ];
 
 /** Shared top bar for the customer pages. Uses the site theme tokens. */

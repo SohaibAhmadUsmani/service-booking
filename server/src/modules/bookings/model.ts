@@ -1,4 +1,4 @@
-﻿import { Schema, model } from "mongoose";
+import { Schema, model } from "mongoose";
 
 export const BOOKING_STATUSES = ["pending", "confirmed", "completed", "cancelled", "no_show"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -12,6 +12,8 @@ const bookingSchema = new Schema(
     customerId: { type: Schema.Types.ObjectId, required: true, index: true },
     providerId: { type: Schema.Types.ObjectId, required: true },
     serviceId: { type: Schema.Types.ObjectId, required: true },
+    categoryId: { type: Schema.Types.ObjectId, index: true },
+    serviceType: { type: String, default: "in_person" },
     date: { type: String, required: true }, // YYYY-MM-DD
     startTime: { type: String, required: true }, // HH:mm
     endTime: { type: String, required: true },
