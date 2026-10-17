@@ -171,9 +171,9 @@ export default function RegisterPage() {
       {/* RIGHT AUTH CARD FORM */}
       <div
         data-lenis-prevent
-        className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-y-auto min-h-screen lg:h-screen"
+        className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-y-auto min-h-screen lg:h-screen bg-white text-slate-900"
       >
-        <div className="w-full max-w-md mx-auto my-auto py-8">
+        <div className="w-full max-w-md mx-auto pt-4 sm:pt-6 pb-8">
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
@@ -225,14 +225,14 @@ export default function RegisterPage() {
             {/* Role Toggle */}
             <RoleSelector value={role} onChange={setRole} />
 
-            {/* 2-Column Name */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            {/* Name Fields (Responsive 1-col on mobile, 2-col on sm+) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label
                   htmlFor="reg-first-name"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-800 mb-1.5"
                 >
-                  First Name
+                  First Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="reg-first-name"
@@ -240,7 +240,7 @@ export default function RegisterPage() {
                   type="text"
                   autoComplete="given-name"
                   required
-                  placeholder="John"
+                  placeholder="First name (e.g. John)"
                   value={firstName}
                   onChange={(e) => {
                     setFirstName(e.target.value);
@@ -249,8 +249,8 @@ export default function RegisterPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.firstName}
-                  aria-describedby="firstName-error"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 {fieldErrors.firstName && (
                   <p id="firstName-error" className="mt-1 text-xs text-rose-600 font-medium">
@@ -262,9 +262,9 @@ export default function RegisterPage() {
               <div>
                 <label
                   htmlFor="reg-last-name"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-800 mb-1.5"
                 >
-                  Last Name
+                  Last Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="reg-last-name"
@@ -272,7 +272,7 @@ export default function RegisterPage() {
                   type="text"
                   autoComplete="family-name"
                   required
-                  placeholder="Doe"
+                  placeholder="Last name (e.g. Doe)"
                   value={lastName}
                   onChange={(e) => {
                     setLastName(e.target.value);
@@ -281,8 +281,8 @@ export default function RegisterPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.lastName}
-                  aria-describedby="lastName-error"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 {fieldErrors.lastName && (
                   <p id="lastName-error" className="mt-1 text-xs text-rose-600 font-medium">

@@ -26,8 +26,8 @@ export function createApp() {
   app.use(
     cors({
       origin: process.env.FRONTEND_URL
-        ? [process.env.FRONTEND_URL, "http://localhost:3000"]
-        : ["http://localhost:3000"],
+        ? [process.env.FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"]
+        : ["http://localhost:3000", "http://127.0.0.1:3000"],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
       credentials: true,

@@ -188,9 +188,9 @@ export default function LoginPage() {
       {/* RIGHT AUTH CARD FORM */}
       <div
         data-lenis-prevent
-        className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-y-auto min-h-screen lg:h-screen"
+        className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 overflow-y-auto min-h-screen lg:h-screen bg-white text-slate-900"
       >
-        <div className="w-full max-w-md mx-auto my-auto py-8">
+        <div className="w-full max-w-md mx-auto pt-4 sm:pt-6 pb-8">
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
@@ -241,7 +241,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="login-email"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-xs font-semibold text-slate-800 mb-1.5"
               >
                 Email Address
               </label>
@@ -265,8 +265,8 @@ export default function LoginPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.email}
-                  aria-describedby="email-error"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
               </div>
               {fieldErrors.email && (
@@ -281,7 +281,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="login-password"
-                  className="text-xs font-semibold text-slate-700"
+                  className="text-xs font-semibold text-slate-800"
                 >
                   Password
                 </label>
@@ -313,8 +313,8 @@ export default function LoginPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.password}
-                  aria-describedby="password-error"
-                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 <button
                   type="button"
