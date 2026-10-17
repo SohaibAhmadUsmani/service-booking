@@ -5,8 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Star } from "lucide-react";
-import CatalogNav from "../../components/catalog/CatalogNav";
-import styles from "../../components/catalog/catalog.module.css";
+import CustomerHeader from "@/components/customer/CustomerHeader";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import { ApiError, apiGet, apiPost } from "../../../lib/api/client";
 
@@ -61,9 +60,9 @@ function upcomingWorkingDates(days: { day: number }[], count = 6) {
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className={styles.root}>
-      <CatalogNav />
-      <main className={styles.container}>{children}</main>
+    <div className="min-h-screen bg-background text-foreground">
+      <CustomerHeader />
+      <main className="mx-auto max-w-3xl px-4 py-10">{children}</main>
     </div>
   );
 }
@@ -212,7 +211,7 @@ function BookingFlow() {
   if (authLoading) {
     return (
       <Shell>
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </Shell>
     );
   }
@@ -220,8 +219,8 @@ function BookingFlow() {
   if (!validService) {
     return (
       <Shell>
-        <h1 className={styles.pageTitle}>Book a service</h1>
-        <p className="mt-2 text-slate-500">
+        <h1 className="text-2xl font-bold">Book a service</h1>
+        <p className="mt-2 text-muted-foreground">
           Choose a service first.{" "}
           <Link href="/search" className="text-indigo-600 underline">
             Browse services
@@ -234,8 +233,8 @@ function BookingFlow() {
   if (!isAuthenticated) {
     return (
       <Shell>
-        <h1 className={styles.pageTitle}>Book a service</h1>
-        <p className="mt-2 text-slate-500">
+        <h1 className="text-2xl font-bold">Book a service</h1>
+        <p className="mt-2 text-muted-foreground">
           Please{" "}
           <Link href="/login" className="text-indigo-600 underline">
             log in
@@ -249,7 +248,7 @@ function BookingFlow() {
   if (created) {
     return (
       <Shell>
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center text-emerald-900">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center text-emerald-500">
           <CheckCircle2 className="h-10 w-10" />
           <h1 className="text-2xl font-bold">Booking requested</h1>
           <p>
@@ -269,11 +268,11 @@ function BookingFlow() {
 
   return (
     <Shell>
-      <h1 className={styles.pageTitle}>Book a service</h1>
+      <h1 className="text-2xl font-bold">Book a service</h1>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-slate-900">
+      <div className="mt-4 rounded-xl border border-border bg-card p-4 text-card-foreground">
         <p className="font-semibold">{serviceName}</p>
-        {providerName && step > 1 && <p className="text-sm text-slate-500">with {providerName}</p>}
+        {providerName && step > 1 && <p className="text-sm text-muted-foreground">with {providerName}</p>}
         <p className="mt-1 font-semibold">Rs {price.toLocaleString()}</p>
       </div>
 
@@ -282,7 +281,7 @@ function BookingFlow() {
           <li
             key={label}
             className={`flex-1 rounded-lg px-3 py-2 text-center ${
-              step === i + 1 ? "bg-indigo-600 font-semibold text-white" : "bg-slate-100 text-slate-500"
+              step === i + 1 ? "bg-indigo-600 font-semibold text-white" : "bg-muted text-muted-foreground"
             }`}
           >
             {i + 1}. {label}
@@ -291,28 +290,28 @@ function BookingFlow() {
       </ol>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>
+        <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-500">{error}</div>
       )}
 
       {step === 1 && (
         <section className="mt-6">
           <p className="text-sm font-medium">Choose a provider</p>
-          {providersLoading && <Loader2 className="mt-4 h-5 w-5 animate-spin text-slate-400" />}
+          {providersLoading && <Loader2 className="mt-4 h-5 w-5 animate-spin text-muted-foreground" />}
           {!providersLoading && providers.length === 0 && (
-            <p className="mt-4 text-sm text-slate-500">No providers are taking bookings yet.</p>
+            <p className="mt-4 text-sm text-muted-foreground">No providers are taking bookings yet.</p>
           )}
           <ul className="mt-3 space-y-2">
             {providers.map((p) => (
               <li key={p.id}>
                 <button
                   onClick={() => pickProvider(p)}
-                  className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white p-4 text-left text-slate-900 hover:border-indigo-400"
+                  className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 text-left text-card-foreground hover:border-indigo-400"
                 >
                   <span>
                     <span className="block font-semibold">{p.businessName || p.name}</span>
-                    {p.businessName && <span className="block text-sm text-slate-500">{p.name}</span>}
+                    {p.businessName && <span className="block text-sm text-muted-foreground">{p.name}</span>}
                   </span>
-                  <span className="flex items-center gap-1 text-sm text-slate-500">
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Star className="h-4 w-4" />
                     {p.reviewCount > 0 ? `${p.rating.toFixed(1)} (${p.reviewCount})` : "New"}
                   </span>
@@ -327,11 +326,11 @@ function BookingFlow() {
         <section className="mt-6">
           <label className="text-sm font-medium">Choose a date</label>
           {workingDays && workingDays.length === 0 && (
-            <p className="mt-1 text-xs text-slate-500">This provider has not set working days yet.</p>
+            <p className="mt-1 text-xs text-muted-foreground">This provider has not set working days yet.</p>
           )}
           {workingDays && workingDays.length > 0 && (
             <>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Works on: {workingDays.map((d) => `${DAY_NAMES[d.day]} ${d.start}-${d.end}`).join(", ")}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -340,7 +339,7 @@ function BookingFlow() {
                     key={day}
                     onClick={() => onDateChange(day)}
                     className={`rounded-lg border px-3 py-1.5 text-sm ${
-                      date === day ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 hover:border-indigo-400"
+                      date === day ? "border-indigo-500 bg-indigo-500 text-white" : "border-input hover:border-indigo-400"
                     }`}
                   >
                     {new Date(`${day}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
@@ -354,11 +353,11 @@ function BookingFlow() {
             min={todayString()}
             value={date}
             onChange={(e) => onDateChange(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-card-foreground"
           />
-          {slotsLoading && <Loader2 className="mt-4 h-5 w-5 animate-spin text-slate-400" />}
+          {slotsLoading && <Loader2 className="mt-4 h-5 w-5 animate-spin text-muted-foreground" />}
           {date && !slotsLoading && slots.length === 0 && (
-            <p className="mt-4 text-sm text-slate-500">No free times on this day. Try another date.</p>
+            <p className="mt-4 text-sm text-muted-foreground">No free times on this day. Try another date.</p>
           )}
           {slots.length > 0 && (
             <>
@@ -371,7 +370,7 @@ function BookingFlow() {
                     className={`rounded-lg border px-3 py-1.5 text-sm ${
                       chosen === s.start
                         ? "border-indigo-500 bg-indigo-500 text-white"
-                        : "border-slate-300 hover:border-indigo-400"
+                        : "border-input hover:border-indigo-400"
                     }`}
                   >
                     {s.start}
@@ -386,7 +385,7 @@ function BookingFlow() {
                 setError(null);
                 setStep(1);
               }}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+              className="rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
             >
               Change provider
             </button>
@@ -412,7 +411,7 @@ function BookingFlow() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-card-foreground"
             />
           </div>
           <div>
@@ -421,7 +420,7 @@ function BookingFlow() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="03001234567"
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-card-foreground"
             />
           </div>
           <div>
@@ -430,13 +429,13 @@ function BookingFlow() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-card-foreground"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setStep(2)}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+              className="rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
             >
               Back
             </button>
@@ -453,21 +452,21 @@ function BookingFlow() {
 
       {step === 4 && (
         <section className="mt-6">
-          <dl className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900">
-            <div className="flex justify-between"><dt className="text-slate-500">Service</dt><dd>{serviceName}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Provider</dt><dd>{providerName}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Date</dt><dd>{formatDate(date)}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Time</dt><dd>{chosen}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Name</dt><dd>{name}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Phone</dt><dd>{phone}</dd></div>
-            {notes && <div className="flex justify-between"><dt className="text-slate-500">Notes</dt><dd>{notes}</dd></div>}
+          <dl className="space-y-2 rounded-xl border border-border bg-card p-4 text-sm text-card-foreground">
+            <div className="flex justify-between"><dt className="text-muted-foreground">Service</dt><dd>{serviceName}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Provider</dt><dd>{providerName}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Date</dt><dd>{formatDate(date)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Time</dt><dd>{chosen}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Name</dt><dd>{name}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Phone</dt><dd>{phone}</dd></div>
+            {notes && <div className="flex justify-between"><dt className="text-muted-foreground">Notes</dt><dd>{notes}</dd></div>}
             <div className="flex justify-between border-t pt-2 font-semibold"><dt>Total</dt><dd>Rs {price.toLocaleString()}</dd></div>
           </dl>
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setStep(3)}
               disabled={submitting}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+              className="rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
             >
               Back
             </button>
