@@ -17,6 +17,7 @@ import { UserRole } from "@service-booking/shared";
 import { SecurityHeroPanel } from "../../../components/auth/SecurityHeroPanel";
 import { RoleSelector } from "../../../components/auth/RoleSelector";
 import { PasswordStrengthMeter } from "../../../components/auth/PasswordStrengthMeter";
+import { PhoneInputWithCountry } from "../../../components/auth/PhoneInputWithCountry";
 import { SocialAuthButtons } from "../../../components/auth/SocialAuthButtons";
 import { ShimmerButton } from "../../../components/ui/ShimmerButton";
 import { useAuth } from "../../../lib/auth/AuthContext";
@@ -33,6 +34,7 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -115,6 +117,7 @@ export default function RegisterPage() {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           role,
+          phone: phone.trim() ? phone.trim() : undefined,
         }),
       });
 
@@ -296,9 +299,9 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="reg-email"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-xs font-semibold text-slate-800 mb-1.5"
               >
-                Work Email
+                Work Email <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Mail
@@ -320,8 +323,8 @@ export default function RegisterPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.email}
-                  aria-describedby="email-error"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
               </div>
               {fieldErrors.email && (
@@ -331,13 +334,37 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* Phone Number (Optional) */}
+            <div>
+              <label
+                htmlFor="phone-input"
+                className="block text-xs font-semibold text-slate-800 mb-1.5"
+              >
+                Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <PhoneInputWithCountry
+                value={phone}
+                onChange={(val) => {
+                  setPhone(val);
+                  if (fieldErrors.phone) {
+                    setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                  }
+                }}
+              />
+              {fieldErrors.phone && (
+                <p id="phone-error" className="mt-1 text-xs text-rose-600 font-medium">
+                  {fieldErrors.phone}
+                </p>
+              )}
+            </div>
+
             {/* Password */}
             <div>
               <label
                 htmlFor="reg-password"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-xs font-semibold text-slate-800 mb-1.5"
               >
-                Password
+                Password <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Lock
@@ -359,8 +386,8 @@ export default function RegisterPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.password}
-                  aria-describedby="password-error"
-                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 <button
                   type="button"
@@ -389,9 +416,9 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="reg-confirm-password"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-xs font-semibold text-slate-800 mb-1.5"
               >
-                Confirm Password
+                Confirm Password <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Lock
@@ -413,8 +440,8 @@ export default function RegisterPage() {
                     }
                   }}
                   aria-invalid={!!fieldErrors.confirmPassword}
-                  aria-describedby="confirmPassword-error"
-                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-200 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
+                  aria-describedby={fieldErrors.confirmPassword ? "confirmPassword-error" : undefined}
+                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-slate-300 bg-white text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all min-h-[44px] autofill:shadow-[inset_0_0_0px_1000px_white]"
                 />
                 <button
                   type="button"

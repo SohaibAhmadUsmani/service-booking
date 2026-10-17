@@ -74,7 +74,7 @@ export default function ProviderShell({ children }: { children: React.ReactNode 
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-medium text-white">
               {displayName.charAt(0).toUpperCase()}
             </div>
-            <button onClick={() => logout()} className="text-sm text-red-600 hover:underline">
+            <button onClick={() => logout("/login")} className="text-sm text-red-600 hover:underline">
               Log out
             </button>
           </div>

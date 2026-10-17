@@ -53,7 +53,7 @@ interface AuthContextType {
     (token: string, user: UserProfile): void;
   };
   refreshSession: () => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (redirectUrl?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,8 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  // Clean logout: revokes token family on the backend and purges local storage
-  const logout = useCallback(async () => {
+  // Clean logout: revokes token family on the backend, purges storage, and optionally redirects
+  const logout = useCallback(async (redirectUrl?: string) => {
     const activeRefreshToken =
       refreshToken || localStorage.getItem("auth_refresh_token");
 
@@ -212,6 +212,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Network errors on logout should not block UI logout completion
       }
+    }
+
+    if (redirectUrl && typeof window !== "undefined") {
+      window.location.href = redirectUrl;
     }
   }, [refreshToken]);
 

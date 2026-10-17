@@ -23,6 +23,9 @@ const DUMMY_SALT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 const DUMMY_HASH = bcrypt.hashSync("dummy_timing_neutralizer_payload", isNaN(DUMMY_SALT_ROUNDS) ? 12 : DUMMY_SALT_ROUNDS);
 
 function formatUserProfile(user: IUserDocument): UserProfile {
+  const createdAtDate = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt || Date.now());
+  const updatedAtDate = user.updatedAt instanceof Date ? user.updatedAt : new Date(user.updatedAt || Date.now());
+
   return {
     id: user._id.toString(),
     email: user.email,
@@ -33,8 +36,8 @@ function formatUserProfile(user: IUserDocument): UserProfile {
     avatarUrl: user.avatarUrl || undefined,
     isEmailVerified: user.isEmailVerified ?? false,
     providerDetails: null,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString(),
+    createdAt: createdAtDate.toISOString(),
+    updatedAt: updatedAtDate.toISOString(),
   };
 }
 
@@ -523,6 +526,7 @@ export class AuthService {
     return {
       user: formatUserProfile(user),
       token,
+      accessToken: token,
       refreshToken: rawRefreshToken,
     };
   }

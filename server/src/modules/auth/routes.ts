@@ -11,6 +11,7 @@ import {
   verifyEmailHandler,
   resendVerificationHandler,
 } from "./controller";
+import { getProfileHandler } from "../users/controller";
 import { validateRequest } from "../../middleware/validate";
 import { requireAuth } from "../../middleware/auth";
 import {
@@ -40,6 +41,12 @@ authRouter.post(
   authRegisterLimiter,
   validateRequest({ body: registerSchema }),
   registerHandler
+);
+
+authRouter.get(
+  "/me",
+  requireAuth,
+  getProfileHandler
 );
 
 authRouter.post(

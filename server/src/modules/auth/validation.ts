@@ -26,7 +26,38 @@ const nameField = (label: string) =>
     .transform(nfkc);
 
 export const registerSchema = z
-  .object({
+  .preprocess((val: any) => {
+    if (val && typeof val === "object") {
+      const copy = { ...val };
+      // Intelligently handle single name or fullName fields
+      if (typeof copy.name === "string" && !copy.firstName) {
+        const parts = copy.name.trim().split(/\s+/);
+        copy.firstName = parts[0] || "User";
+        if (!copy.lastName) {
+          copy.lastName = parts.slice(1).join(" ") || copy.firstName;
+        }
+      }
+      if (typeof copy.fullName === "string" && !copy.firstName) {
+        const parts = copy.fullName.trim().split(/\s+/);
+        copy.firstName = parts[0] || "User";
+        if (!copy.lastName) {
+          copy.lastName = parts.slice(1).join(" ") || copy.firstName;
+        }
+      }
+      if (copy.firstName && (!copy.lastName || !copy.lastName.trim())) {
+        copy.lastName = copy.firstName;
+      }
+      if (typeof copy.phone === "string") {
+        let cleaned = copy.phone.trim().replace(/[\s\-()]/g, "");
+        if (cleaned.length > 0 && !cleaned.startsWith("+")) {
+          cleaned = "+" + cleaned;
+        }
+        copy.phone = cleaned;
+      }
+      return copy;
+    }
+    return val;
+  }, z.object({
     email: emailField,
     password: z
       .string()
@@ -37,7 +68,7 @@ export const registerSchema = z
         "Password must contain an uppercase letter, a lowercase letter, a number, and a special symbol"
       ),
     firstName: nameField("First name"),
-    lastName: nameField("Last name"),
+    lastName: nameField("Last name").optional().default("User"),
     role: z.enum([UserRole.Customer, UserRole.Provider]).default(UserRole.Customer),
     phone: z
       .string()
@@ -45,8 +76,7 @@ export const registerSchema = z
       .regex(PHONE_E164_REGEX, "Phone number must be in E.164 format (e.g. +14155552671)")
       .optional()
       .or(z.literal("")),
-  })
-  .strict();
+  }).strip());
 
 export const loginSchema = z
   .object({
@@ -57,19 +87,19 @@ export const loginSchema = z
       .max(72, "Password must not exceed 72 characters"),
     rememberMe: z.boolean().optional().default(false),
   })
-  .strict();
+  .strip();
 
 export const refreshSchema = z
   .object({
     refreshToken: z.string().min(1, "Refresh token is required"),
   })
-  .strict();
+  .strip();
 
 export const logoutSchema = z
   .object({
-    refreshToken: z.string().min(1, "Refresh token is required"),
+    refreshToken: z.string().optional().nullable().or(z.literal("")),
   })
-  .strict();
+  .strip();
 
 export const forgotPasswordSchema = z
   .object({

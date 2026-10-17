@@ -62,7 +62,7 @@ export function PublicHeader() {
               <Button
                 variant="outline"
                 className="border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 gap-1.5"
-                onClick={() => logout()}
+                onClick={() => logout("/login")}
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign out</span>
@@ -116,8 +116,8 @@ export function PublicHeader() {
                 <Button
                   className="bg-rose-600 hover:bg-rose-500 text-white"
                   onClick={() => {
-                    logout();
                     setOpen(false);
+                    void logout("/login");
                   }}
                 >
                   Sign out
