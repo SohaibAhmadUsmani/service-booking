@@ -3,6 +3,8 @@ import { UserRole } from "@service-booking/shared";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { authorizeBooking, scopeBookingQuery, useTokenAsCustomer } from "./access";
 import { getCalendar } from "./calendar";
+import { listBookableProviders } from "./providerList";
+import { useServicePrice } from "./servicePrice";
 import {
   cancelBooking,
   changeBookingStatus,
@@ -15,11 +17,15 @@ import {
 /** Owner: Shanza */
 export const bookingsRouter = Router();
 
+// Public provider list for the booking flow. Must stay above "/:id".
+bookingsRouter.get("/providers", listBookableProviders);
+
 bookingsRouter.post(
   "/",
   requireAuth,
   requireRole(UserRole.Customer, UserRole.Admin),
   useTokenAsCustomer,
+  useServicePrice,
   createBooking
 );
 bookingsRouter.get("/", requireAuth, scopeBookingQuery, listBookings);

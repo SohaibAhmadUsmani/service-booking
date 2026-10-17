@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import CatalogNav from "../../components/catalog/CatalogNav";
-import styles from "../../components/catalog/catalog.module.css";
+import { useRouter } from "next/navigation";
+import CustomerHeader from "@/components/customer/CustomerHeader";
 import { CalendarClock, Clock, Loader2 } from "lucide-react";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import { ApiError, apiGet, apiPatch } from "../../../lib/api/client";
@@ -33,7 +33,7 @@ const STATUS_META: Record<BookingStatus, { label: string; chip: string }> = {
   confirmed: { label: "Confirmed", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   completed: { label: "Completed", chip: "bg-sky-50 text-sky-700 border-sky-200" },
   cancelled: { label: "Cancelled", chip: "bg-rose-50 text-rose-700 border-rose-200" },
-  no_show: { label: "No-show", chip: "bg-slate-100 text-slate-600 border-slate-200" },
+  no_show: { label: "No-show", chip: "bg-gray-100 text-gray-600 border-gray-200" },
 };
 
 const ACTIVE: BookingStatus[] = ["pending", "confirmed"];
@@ -48,6 +48,12 @@ function todayString() {
 }
 
 export default function CustomerBookingsPage() {
+  const router = useRouter();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("serviceId")) router.replace(`/book?${q.toString()}`);
+  }, [router]);
+
   const { user, isAuthenticated, isLoading: authLoading, refreshSession } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
@@ -163,17 +169,17 @@ export default function CustomerBookingsPage() {
 
   if (authLoading) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      <div className="min-h-screen bg-gray-50 text-gray-900"><CustomerHeader /><main className="mx-auto max-w-3xl px-4 py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
       </main></div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className={styles.root}><CatalogNav /><main className={styles.container}>
-        <h1 className={styles.pageTitle}>My bookings</h1>
-        <p className="mt-2 text-slate-500">
+      <div className="min-h-screen bg-gray-50 text-gray-900"><CustomerHeader /><main className="mx-auto max-w-3xl px-4 py-10">
+        <h1 className="text-2xl font-bold text-gray-900">My bookings</h1>
+        <p className="mt-2 text-gray-500">
           Please{" "}
           <Link href="/login" className="text-indigo-600 underline">
             log in
@@ -185,19 +191,19 @@ export default function CustomerBookingsPage() {
   }
 
   return (
-    <div className={styles.root}><CatalogNav /><main className={styles.container}>
-      <h1 className={styles.pageTitle}>My bookings</h1>
-      <p className="mt-1 text-sm text-slate-500">Your appointments and booking history.</p>
+    <div className="min-h-screen bg-gray-50 text-gray-900"><CustomerHeader /><main className="mx-auto max-w-3xl px-4 py-10">
+      <h1 className="text-2xl font-bold text-gray-900">My bookings</h1>
+      <p className="mt-1 text-sm text-gray-500">Your appointments and booking history.</p>
 
-      <div className="mt-6 flex gap-2 border-b border-slate-200">
+      <div className="mt-6 flex gap-2 border-b border-gray-200">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setFilter(t.id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
               filter === t.id
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-900"
             }`}
           >
             {t.label} ({t.count})
@@ -211,10 +217,10 @@ export default function CustomerBookingsPage() {
 
       {loading ? (
         <div className="mt-10 flex justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
       ) : shown.length === 0 ? (
-        <div className="mt-10 flex flex-col items-center gap-2 text-slate-500">
+        <div className="mt-10 flex flex-col items-center gap-2 text-gray-500">
           <CalendarClock className="h-8 w-8" />
           <p>{filter === "upcoming" ? "No upcoming bookings." : "Nothing to show here yet."}</p>
         </div>
@@ -227,16 +233,16 @@ export default function CustomerBookingsPage() {
             return (
               <li
                 key={b._id}
-                className="rounded-xl border border-slate-200 bg-white p-4"
+                className="rounded-xl border border-gray-200 bg-white p-4 text-gray-900"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold">{formatDate(b.date)}</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
                       <Clock className="h-4 w-4" />
                       {b.startTime} - {b.endTime}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">{b.bookingId}</p>
+                    <p className="mt-1 text-xs text-gray-500">{b.bookingId}</p>
                   </div>
                   <div className="text-right">
                     <span
@@ -249,18 +255,18 @@ export default function CustomerBookingsPage() {
                 </div>
 
                 {active && (
-                  <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
+                  <div className="mt-4 flex gap-2 border-t border-gray-200 pt-3">
                     <button
                       onClick={() => (open ? setReschedulingId(null) : openReschedule(b))}
                       disabled={busy}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                     >
                       {open ? "Close" : "Reschedule"}
                     </button>
                     <button
                       onClick={() => cancelBooking(b)}
                       disabled={busy}
-                      className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                      className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
                     >
                       {busy && !open ? "Cancelling..." : "Cancel booking"}
                     </button>
@@ -268,18 +274,18 @@ export default function CustomerBookingsPage() {
                 )}
 
                 {open && (
-                  <div className="mt-4 rounded-lg bg-slate-50 p-3">
-                    <label className="text-sm font-medium">Pick a new date</label>
+                  <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                    <label className="text-sm font-medium text-gray-900">Pick a new date</label>
                     <input
                       type="date"
                       min={todayString()}
                       value={newDate}
                       onChange={(e) => onDateChange(b, e.target.value)}
-                      className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                      className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
                     />
-                    {slotsLoading && <Loader2 className="mt-3 h-5 w-5 animate-spin text-slate-400" />}
+                    {slotsLoading && <Loader2 className="mt-3 h-5 w-5 animate-spin text-gray-400" />}
                     {newDate && !slotsLoading && slots.length === 0 && (
-                      <p className="mt-3 text-sm text-slate-500">No free times on this day. Try another date.</p>
+                      <p className="mt-3 text-sm text-gray-500">No free times on this day. Try another date.</p>
                     )}
                     {slots.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -289,8 +295,8 @@ export default function CustomerBookingsPage() {
                             onClick={() => setChosen(s.start)}
                             className={`rounded-lg border px-3 py-1.5 text-sm ${
                               chosen === s.start
-                                ? "border-indigo-500 bg-indigo-500 text-white"
-                                : "border-slate-300 hover:border-indigo-400"
+                                ? "border-indigo-600 bg-indigo-600 text-white"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-indigo-400"
                             }`}
                           >
                             {s.start}

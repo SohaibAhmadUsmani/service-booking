@@ -41,7 +41,7 @@ function BookNowButton({ className }: { className?: string }) {
       )}
       asChild
     >
-      <Link href="/search" className="inline-flex items-center">
+      <Link href="/book" className="inline-flex items-center">
         <span className="relative z-10">Book a service</span>
         <span className="absolute right-1 flex h-8 w-8 items-center justify-center rounded-full bg-background text-foreground transition-all duration-500 group-hover:right-[calc(100%-36px)] group-hover:rotate-45">
           <ArrowUpRight size={16} />

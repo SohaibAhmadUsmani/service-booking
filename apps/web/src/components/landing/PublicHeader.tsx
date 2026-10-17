@@ -50,6 +50,7 @@ export function PublicHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <Button className="bg-indigo-500 hover:bg-indigo-400" asChild><Link href="/book">Book a service</Link></Button>
           {isAuthenticated ? (
             <>
               <Button variant="ghost" className="text-slate-200 hover:bg-white/5 hover:text-white gap-2" asChild>
